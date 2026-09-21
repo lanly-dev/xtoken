@@ -8,13 +8,200 @@
   },
   "categories": [
     "AI",
-    "Chat"
+    "Chat",
+    "Other"
   ],
   "activationEvents": [
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "xToken.fetchToken",
+        "title": "Fetch / Claim Token",
+        "category": "xToken",
+        "shortTitle": "Fetch Token",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "xToken.selectProvider",
+        "title": "Select Free-Tier Provider",
+        "category": "xToken",
+        "shortTitle": "Select Provider",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "xToken.showToken",
+        "title": "Show Active Token",
+        "category": "xToken",
+        "shortTitle": "Show Token",
+        "icon": "$(key)",
+        "enablement": "xtoken.hasKey"
+      },
+      {
+        "command": "xToken.clearToken",
+        "title": "Clear Stored Tokens",
+        "category": "xToken",
+        "shortTitle": "Clear Tokens",
+        "icon": "$(trash)",
+        "enablement": "xtoken.hasKey"
+      },
+      {
+        "command": "xToken.setKey",
+        "title": "Add or Replace API Key",
+        "category": "xToken",
+        "shortTitle": "Set API Key",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "xToken.rotateKey",
+        "title": "Rotate to Next Stored Key",
+        "category": "xToken",
+        "shortTitle": "Rotate Key",
+        "icon": "$(refresh)",
+        "enablement": "xtoken.keyCount > 1"
+      },
+      {
+        "command": "xToken.showUsage",
+        "title": "Show Daily Usage and Quotas",
+        "category": "xToken",
+        "shortTitle": "Show Usage",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "xToken.refreshStatus",
+        "title": "Refresh Status Bar and Quota Counters",
+        "category": "xToken",
+        "shortTitle": "Refresh Status",
+        "icon": "$(sync)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "xToken.fetchToken",
+          "when": "true"
+        },
+        {
+          "command": "xToken.selectProvider",
+          "when": "true"
+        },
+        {
+          "command": "xToken.setKey",
+          "when": "true"
+        },
+        {
+          "command": "xToken.showUsage",
+          "when": "true"
+        },
+        {
+          "command": "xToken.refreshStatus",
+          "when": "true"
+        },
+        {
+          "command": "xToken.showToken",
+          "when": "xtoken.hasKey"
+        },
+        {
+          "command": "xToken.clearToken",
+          "when": "xtoken.hasKey"
+        },
+        {
+          "command": "xToken.rotateKey",
+          "when": "xtoken.keyCount > 1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "xToken",
+      "properties": {
+        "xtoken.serverUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Custom endpoint that `xToken.fetchToken` calls when claiming a token. xToken sends an HTTP `POST` with a JSON body (extension version, provider id, machine id, requested limits) and expects a JSON answer containing `token`, or `key`/`apiKey`/`access_token` (optionally nested inside `data`). Leave empty to use a provider's built-in guided setup instead. The historical `xToken.serverUrl` setting is still honoured as an alias."
+        },
+        "xtoken.defaultProvider": {
+          "type": "string",
+          "default": "gemini",
+          "enum": [
+            "gemini",
+            "cerebras",
+            "openrouter",
+            "groq",
+            "mistral",
+            "cloudflare",
+            "github-models",
+            "kilo"
+          ],
+          "enumDescriptions": [
+            "Google Gemini API (Google AI Studio) - 1,500 free requests/day",
+            "Cerebras Inference - ultra fast, high free daily token allowance",
+            "OpenRouter :free models - 50 to 1,000 free requests/day",
+            "Groq Cloud - fast inference, about 200K free tokens/day",
+            "Mistral AI Experiment plan - rate limited, generous monthly tokens",
+            "Cloudflare Workers AI - 10,000 free Neurons/day (planned)",
+            "GitHub Models - retired upstream, kept for reference",
+            "Kilo Code Gateway - no key required for :free models (planned)"
+          ],
+          "markdownDescription": "Provider used when no provider has been selected yet or when `xToken.fetchToken` runs without an active provider."
+        },
+        "xtoken.requestTimeout": {
+          "type": "number",
+          "default": 20,
+          "minimum": 2,
+          "maximum": 120,
+          "markdownDescription": "Seconds to wait for a claim, verification or quota request before it is aborted."
+        },
+        "xtoken.maxKeysPerProvider": {
+          "type": "number",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 32,
+          "markdownDescription": "How many keys are kept per provider inside the rotation ring stored in Secret Storage. When the ring is full the oldest key is dropped."
+        },
+        "xtoken.autoRotateOnFailure": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Try another stored key for the same provider when the current key is refused (HTTP 401, 403 or 429)."
+        },
+        "xtoken.dailyClaimReminder": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Ask for confirmation before claiming a token twice on the same calendar day, so a free tier is not burned by accident."
+        },
+        "xtoken.usageInStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Append the tracked request count (for example `3/1,500 today`) to the status bar label."
+        },
+        "xtoken.verifyOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Verify the active key once shortly after activation and warn when the provider no longer accepts it."
+        },
+        "xtoken.logLevel": {
+          "type": "string",
+          "default": "info",
+          "enum": [
+            "off",
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
+          "enumDescriptions": [
+            "No output",
+            "Failures only",
+            "Failures and warnings",
+            "Normal operation",
+            "Every HTTP request and state change"
+          ],
+          "markdownDescription": "Verbosity of the `xToken` output channel. API keys are never written to the log; only masked values appear."
+        }
+      }
+    }
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",

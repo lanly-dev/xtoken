@@ -1,9 +1,45 @@
 # Change Log
 
-All notable changes to the "etoken" extension will be documented in this file.
+All notable changes to the **xToken** extension are documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-09-21
 
-- Initial release
+### Added
+
+- Free-tier provider catalog with pre-configured presets, documentation links and
+  base URLs for Google Gemini API, Cerebras Inference, OpenRouter (`:free` models),
+  Groq Cloud and Mistral AI (Experiment plan).
+- Documented presets for the next iteration: Cloudflare Workers AI (10,000 free
+  Neurons/day), GitHub Models (retired upstream, kept for migration reference) and
+  the Kilo Code Gateway (no key required for `:free` models).
+- `xToken.fetchToken`: claims a token from the custom endpoint in
+  `xtoken.serverUrl`/`xToken.serverUrl`, or runs the provider guided setup
+  (open console, paste key, verify over HTTPS) inside
+  `vscode.window.withProgress` with cancellation support.
+- `xToken.selectProvider`: QuickPick listing daily limits, base URL, docs link,
+  a *Get a free key* button per row and a follow-up action menu.
+- `xToken.showToken`: masked active token with **Copy to Clipboard** and a
+  transient *Reveal Full Token* QuickPick.
+- `xToken.clearToken`: removes keys from Secret Storage (all providers or just
+  the active one), clears workspace state, the daily claim guard and usage history.
+- `xToken.setKey`, `xToken.rotateKey`, `xToken.showUsage` and
+  `xToken.refreshStatus` for manual key entry, key rotation across a per-provider
+  ring, the daily usage ledger and on-demand quota refreshes.
+- Right-aligned status bar item: `$(key) xToken: Active` /
+  `$(warning) xToken: No Key`, with a rich tooltip and click-through to the
+  provider QuickPick.
+- Key storage in `vscode.SecretStorage` (`xToken_api_key`,
+  `xToken_api_key_ring`) plus daily state in `globalState` (`lastClaimDate`,
+  `activeProvider`, `keyRotationIndex`, `usageByDate`, 30 day retention).
+- Live quota counters for providers that expose one (OpenRouter `free_model_daily_requests`)
+  with local tracking as the fallback.
+- Configuration surface under `xtoken.*`: `serverUrl`, `defaultProvider`,
+  `requestTimeout`, `maxKeysPerProvider`, `autoRotateOnFailure`,
+  `dailyClaimReminder`, `usageInStatusBar`, `verifyOnStartup`, `logLevel`.
+- Output channel logging with masked credentials and `xToken` level gating.
+- Exported API for other extensions: `recordUsage`, `getTodayUsage`,
+  `getActiveToken`, `getActiveProvider`, `getKeyCount`, `rotateKey`,
+  `refreshStatusBar`.
