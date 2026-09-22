@@ -9,6 +9,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- `xToken.selectModel` command with a matching inline `$(symbol-enum)` button
+  on every provider row of the dashboard: browse the provider's live
+  `GET /models` catalog (falling back to the preset's static list when the
+  endpoint is unreachable), pick the model xToken should prefer, or clear back
+  to the provider default. The choice is stored per provider in `globalState`
+  (`preferredModels`) and sent as `model` on subsequent claim payloads. The
+  dashboard row description and tooltip show the preferred model, and
+  `xTokenApi.getActiveModel()` exposes it to other extensions.
 - Inline `$(add)` button on every provider row of the dashboard; it runs
   `xToken.setKey` for that provider directly, no picker needed. Keyless
   providers render as leaf rows and expand into one child per stored key

@@ -10,6 +10,7 @@ import type { RequestContext } from '../api'
 import type {
   ClaimRequestPayload,
   ClaimResponse,
+  ProviderModelInfo,
   ProviderPreset,
   ProviderQuota,
   ProviderStatus,
@@ -29,6 +30,8 @@ export interface ProviderModule {
   verifyKey(apiKey: string, context: RequestContext): Promise<VerificationResult>
   /** Read this provider's live quota counter, when it publishes one. */
   fetchQuota(apiKey: string, context: RequestContext): Promise<ProviderQuota | undefined>
+  /** List the models this provider exposes on its `GET /models` catalog. */
+  listModels(apiKey: string | undefined, context: RequestContext): Promise<ProviderModelInfo[]>
   /** Claim a fresh token for this provider from the configured xToken server. */
   claim(serverUrl: string, payload: ClaimRequestPayload, context: RequestContext): Promise<ClaimResponse>
 }

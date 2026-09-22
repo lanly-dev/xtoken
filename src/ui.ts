@@ -7,8 +7,8 @@ import { xTokenError } from './api'
 import { EXTENSION_NAME } from './constants'
 import type { Logger } from './logger'
 import { AVAILABLE_PROVIDERS, getProvider, UPCOMING_PROVIDERS } from './providers'
-import type { ProviderId, ProviderPreset } from './types'
-import { describeFreeTier, errorMessage, hostOf } from './utils'
+import type { ProviderId, ProviderModelInfo, ProviderPreset } from './types'
+import { describeFreeTier, errorMessage, formatCount, hostOf } from './utils'
 
 export interface ProviderPickItem extends vscode.QuickPickItem {
   presetId?: ProviderId
@@ -120,6 +120,69 @@ export async function pickProviderAction(
     ignoreFocusOut: true
   })
   return picked?.action
+}
+
+export interface ModelPickItem extends vscode.QuickPickItem {
+  /** Absent or `undefined` clears the stored preference (also used by separators). */
+  model?: ProviderModelInfo
+}
+
+/** What the user chose in {@link pickModel}; `undefined` means "dismissed". */
+export interface ModelSelection {
+  /** The chosen model, or `undefined` when the preference should be cleared. */
+  model: ProviderModelInfo | undefined
+}
+
+/**
+ * `xToken.selectModel`: choose the model xToken should prefer for a provider.
+ * The first row clears any stored preference; the remaining rows come from the
+ * live `GET /models` catalog (or the preset fallback list) prepared by the
+ * caller. Dismissing the picker leaves the stored preference untouched.
+ */
+export async function pickModel(
+  preset: ProviderPreset,
+  models: ProviderModelInfo[],
+  preferredId: string | undefined
+): Promise<ModelSelection | undefined> {
+  const items: ModelPickItem[] = [
+    {
+      label: '$(clear) Use the provider default',
+      description: preferredId ? `clears ${preferredId}` : 'no preference stored',
+      detail: 'Future claims for this provider stop carrying a preferred model',
+      model: undefined
+    },
+    { label: 'Models', kind: vscode.QuickPickItemKind.Separator },
+    ...models.map(model => modelQuickPickItem(model, model.id === preferredId))
+  ]
+
+  const picked = await vscode.window.showQuickPick(items, {
+    title: `${EXTENSION_NAME}: ${preset.name} \u2014 select a model`,
+    placeHolder: [
+      `${formatCount(models.length)} model(s)`,
+      'the pick is stored per provider and sent on future claims'
+    ].join(' \u00b7 '),
+    matchOnDescription: true,
+    matchOnDetail: true,
+    ignoreFocusOut: true
+  })
+  return picked ? { model: picked.model } : undefined
+}
+
+/** Row describing one model in the picker. */
+function modelQuickPickItem(model: ProviderModelInfo, preferred: boolean): ModelPickItem {
+  const tags: string[] = []
+  if (model.name && model.name !== model.id)
+    tags.push(model.id)
+  if (model.free)
+    tags.push('free tier')
+  return {
+    label: `${preferred ? '$(check) ' : ''}${model.name ?? model.id}`,
+    description: tags.join(' \u00b7 '),
+    detail: model.contextLength !== undefined
+      ? `Context window: ${formatCount(model.contextLength)} tokens`
+      : undefined,
+    model
+  }
 }
 
 /** Password masked input box for a provider credential. */

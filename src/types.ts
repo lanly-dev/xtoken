@@ -92,6 +92,18 @@ export interface ProviderQuota {
   checkedAt: number
 }
 
+/** One entry from a provider's `GET /models` catalog. */
+export interface ProviderModelInfo {
+  /** Stable model id persisted and sent to claim endpoints, e.g. `deepseek/deepseek-r1:free`. */
+  id: string
+  /** Human readable name published by the provider, when it has one. */
+  name?: string
+  /** Context window in tokens, when the catalog reports one. */
+  contextLength?: number
+  /** True when the entry passes the free-tier heuristic (OpenRouter `:free` with zero pricing). */
+  free: boolean
+}
+
 export interface VerificationResult {
   ok: boolean
   status?: number
@@ -112,6 +124,8 @@ export interface ClaimRequestPayload {
   version: string
   provider: ProviderId
   providerName: string
+  /** Preferred model id picked via `xToken.selectModel`, when one is set. */
+  model?: string
   requestedDailyTokens?: number
   requestedDailyRequests?: number
   machineId: string
@@ -138,6 +152,8 @@ export interface xTokenApi {
   readonly version: string
   readonly providers: ProviderPreset[]
   getActiveProvider(): ProviderId | undefined
+  /** Preferred model picked via `xToken.selectModel` (defaults to the active provider). */
+  getActiveModel(providerId?: ProviderId): ProviderModelInfo | undefined
   getActiveToken(): Promise<string | undefined>
   getKeyCount(): Promise<number>
   recordUsage(providerId: ProviderId, tokens?: number): Promise<ProviderUsage>

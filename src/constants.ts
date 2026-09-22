@@ -23,6 +23,8 @@ export const SECRET_KEY_RING = 'xToken_api_key_ring'
 export const STATE_LAST_CLAIM_DATE = 'lastClaimDate'
 export const STATE_ACTIVE_PROVIDER = 'activeProvider'
 export const STATE_USAGE = 'usageByDate'
+/** Per-provider preferred model picks (`Record<ProviderId, ProviderModelInfo>`). */
+export const STATE_PREFERRED_MODELS = 'preferredModels'
 /** Legacy manual-rotation cursor; only cleared in `resetSession` now. */
 export const STATE_ROTATION_INDEX = 'keyRotationIndex'
 
@@ -32,6 +34,7 @@ export const USAGE_HISTORY_DAYS = 30
 export const COMMANDS = {
   fetchToken: 'xToken.fetchToken',
   selectProvider: 'xToken.selectProvider',
+  selectModel: 'xToken.selectModel',
   showToken: 'xToken.showToken',
   clearToken: 'xToken.clearToken',
   setKey: 'xToken.setKey',

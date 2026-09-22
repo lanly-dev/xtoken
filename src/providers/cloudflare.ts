@@ -2,7 +2,7 @@
  * Cloudflare Workers AI provider module: catalog entry plus the uniform
  * provider method set ({@link ProviderModule}) bound to the behavior engine.
  */
-import { claimFromServer, fetchProviderQuota, verifyProviderKey } from './engine'
+import { claimFromServer, fetchProviderQuota, listProviderModels, verifyProviderKey } from './engine'
 import type { ProviderModule } from './provider-module'
 import type { ProviderPreset } from '../types'
 
@@ -36,5 +36,6 @@ export const cloudflare: ProviderModule = {
   isAvailable: () => preset.status === 'available',
   verifyKey: (apiKey, context) => verifyProviderKey(preset, apiKey, context),
   fetchQuota: (apiKey, context) => fetchProviderQuota(preset, apiKey, context),
+  listModels: (apiKey, context) => listProviderModels(preset, apiKey, context),
   claim: (serverUrl, payload, context) => claimFromServer(serverUrl, payload, context)
 }

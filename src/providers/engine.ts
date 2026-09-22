@@ -20,6 +20,7 @@ import { EXTENSION_NAME } from '../constants'
 import type {
   ClaimRequestPayload,
   ClaimResponse,
+  ProviderModelInfo,
   ProviderPreset,
   ProviderQuota,
   VerificationResult
@@ -83,6 +84,51 @@ export async function fetchProviderQuota(
 }
 
 /**
+ * List the models a provider exposes on its `GET /models` catalog endpoint.
+ *
+ * Handles both catalog shapes xToken meets: OpenAI-compatible `{data: [...]}`
+ * (OpenRouter, Cerebras, Groq, Mistral) and the Gemini `{models: [...]}` list.
+ * Entries are normalised to {@link ProviderModelInfo}; OpenRouter rows are
+ * tagged `free` when the id ends in `:free` and prompt and completion pricing
+ * are both zero. The catalog needs no credential on OpenRouter, while the
+ * other providers reuse the preset auth scheme, so a stored key is passed in
+ * when the caller has one.
+ */
+export async function listProviderModels(
+  preset: ProviderPreset,
+  apiKey: string | undefined,
+  context: RequestContext
+): Promise<ProviderModelInfo[]> {
+  const url = buildUrl(preset, '/models', apiKey)
+  const response = await request(
+    url,
+    { method: 'GET', headers: buildHeaders(preset, apiKey, context.version) },
+    context
+  )
+  if (!response.ok)
+    throw failureToError(response, `Listing models for ${preset.name}`)
+
+  const containers: unknown[] = [
+    readPath(response.json, 'data'),
+    readPath(response.json, 'models')
+  ]
+  const container = containers.find(entry => Array.isArray(entry))
+  if (!Array.isArray(container))
+    return []
+
+  const seen = new Set<string>()
+  const models: ProviderModelInfo[] = []
+  for (const entry of container) {
+    const model = parseModelEntry(entry)
+    if (model && !seen.has(model.id)) {
+      seen.add(model.id)
+      models.push(model)
+    }
+  }
+  return models
+}
+
+/**
  * Ask a user supplied endpoint for a daily token. The contract is intentionally
  * forgiving: any of `token`, `key`, `apiKey`, `access_token` (optionally nested
  * under `data`) is accepted as the credential.
@@ -126,6 +172,34 @@ export async function claimFromServer(
     dailyLimit: toNumber(readPath(response.json, 'dailyLimit')) ?? toNumber(readPath(response.json, 'daily_limit')),
     message: pickString(response.json, ['message', 'detail'])
   }
+}
+
+/** Normalise one `GET /models` entry into a {@link ProviderModelInfo}. */
+function parseModelEntry(entry: unknown): ProviderModelInfo | undefined {
+  if (typeof entry === 'string')
+    return entry === '' ? undefined : { id: entry, free: false }
+  if (entry === null || typeof entry !== 'object')
+    return undefined
+  const record = entry as Record<string, unknown>
+  const rawId = typeof record.id === 'string'
+    ? record.id
+    : typeof record.name === 'string' ? record.name : undefined
+  if (!rawId || rawId === '')
+    return undefined
+  // Gemini prefixes ids with `models/`; the bare id is what users recognise.
+  const id = rawId.startsWith('models/') ? rawId.slice('models/'.length) : rawId
+  const name = typeof record.displayName === 'string'
+    ? record.displayName
+    : typeof record.name === 'string' && record.name !== rawId ? record.name : undefined
+  const contextLength = toNumber(record.context_length) ?? toNumber(record.inputTokenLimit)
+  const pricing = record.pricing !== null && typeof record.pricing === 'object'
+    ? record.pricing as Record<string, unknown>
+    : undefined
+  const free = id.endsWith(':free')
+    && pricing !== undefined
+    && toNumber(pricing.prompt) === 0
+    && toNumber(pricing.completion) === 0
+  return { id, name, contextLength, free }
 }
 
 /** Extract model ids from the shapes used by OpenAI/Gemini compatible APIs. */

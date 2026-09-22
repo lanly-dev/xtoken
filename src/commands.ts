@@ -25,6 +25,7 @@ import type { xTokenState } from './state'
 import type {
   ClaimRequestPayload,
   ProviderId,
+  ProviderModelInfo,
   ProviderPreset,
   ProviderQuota,
   xTokenApi,
@@ -116,6 +117,7 @@ export function createApi(rt: Runtime): xTokenApi {
     version: rt.version,
     providers: [...PROVIDERS],
     getActiveProvider: () => rt.state.activeProvider,
+    getActiveModel: providerId => rt.state.preferredModel(providerId ?? rt.state.activeProvider),
     getActiveToken: () => rt.keys.getActiveToken(),
     getKeyCount: () => rt.keys.getKeyCount(),
     recordUsage: (providerId, tokens = 0) => rt.state.recordRequest(providerId, tokens),
@@ -165,6 +167,87 @@ async function showProviderDetails(rt: Runtime, preset: ProviderPreset): Promise
     await ui.openExternal(preset.docsUrl, rt.logger)
   if (picked === 'Get a Free Key')
     await ui.openExternal(preset.keyUrl, rt.logger)
+}
+
+/**
+ * `xToken.selectModel`: pick the model xToken should prefer for a provider.
+ *
+ * The catalog is read live from the provider's `GET /models` endpoint with the
+ * stored key (when the provider is integrated and a key exists) and falls back
+ * to the preset's static model list when the endpoint is unreachable. The pick
+ * is persisted per provider in `globalState` and sent as `model` on subsequent
+ * claim payloads; picking the first row clears the preference again.
+ */
+export async function commandSelectModel(rt: Runtime, source?: unknown): Promise<void> {
+  const config = readConfig()
+  let explicit: ProviderPreset | undefined
+  if (isPreset(source))
+    explicit = source
+  else if (isDashboardProviderNode(source))
+    explicit = source.preset
+  const preset = explicit
+    ?? getProvider(rt.state.activeProvider)
+    ?? (await ui.pickProvider(rt.state.activeProvider))
+  if (!preset)
+    return
+
+  const current = rt.state.preferredModel(preset.id)
+  const models = await loadModelCatalog(rt, preset, config)
+  if (models.length === 0) {
+    void vscode.window.showInformationMessage(
+      `${EXTENSION_NAME}: ${preset.name} did not publish any models to choose from.`
+    )
+    return
+  }
+
+  const selection = await ui.pickModel(preset, models, current?.id)
+  if (!selection)
+    return
+
+  await rt.state.setPreferredModel(preset.id, selection.model)
+  await refreshUi(rt)
+  const message = selection.model
+    ? `${EXTENSION_NAME}: ${preset.name} will prefer ${selection.model.id} on future claims.`
+    : `${EXTENSION_NAME}: ${preset.name} preference cleared; the provider default applies again.`
+  rt.logger.info(message)
+  void vscode.window.showInformationMessage(message)
+}
+
+/** Read the provider's model catalog, falling back to the preset's static list. */
+async function loadModelCatalog(
+  rt: Runtime,
+  preset: ProviderPreset,
+  config: xTokenConfig
+): Promise<ProviderModelInfo[]> {
+  const fallback = preset.models.map(id => ({ id, free: id.includes(':free') }))
+  // Planned and retired presets have no reachable catalog; use their docs list.
+  if (preset.status !== 'available')
+    return fallback
+
+  const activeKey = preset.id === rt.state.activeProvider ? await rt.keys.getActiveToken() : undefined
+  const apiKey = activeKey ?? (await rt.keys.listKeys(preset.id))[0]
+  try {
+    const models = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `${EXTENSION_NAME}: listing ${preset.name} models`,
+        cancellable: false
+      },
+      () => requireModule(preset.id).listModels(apiKey, {
+        timeoutMs: config.requestTimeoutMs,
+        logger: rt.logger,
+        version: rt.version
+      })
+    )
+    if (models.length > 0) {
+      rt.logger.info(`${preset.name} published ${formatCount(models.length)} model(s) in its catalog`)
+      return models
+    }
+    rt.logger.warn(`${preset.name} answered the catalog request with no entries; using the preset list`)
+  } catch (error) {
+    rt.logger.warn(`Could not list ${preset.name} models; using the preset list`, error)
+  }
+  return fallback
 }
 
 /**
@@ -887,6 +970,7 @@ function buildClaimPayload(
     version: rt.version,
     provider: preset.id,
     providerName: preset.name,
+    model: rt.state.preferredModel(preset.id)?.id,
     requestedDailyRequests: preset.freeRequestLimit,
     requestedDailyTokens: preset.freeTokenLimit,
     machineId: rt.machineId,

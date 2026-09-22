@@ -7,12 +7,12 @@
 import * as vscode from 'vscode'
 
 import { COMMANDS, EXTENSION_NAME } from './constants'
-import type { Logger } from './logger'
+import { describeFreeTier, describeQuota, formatCount, maskToken } from './utils'
 import { PROVIDERS } from './providers'
 import type { KeyStore } from './secrets'
+import type { Logger } from './logger'
+import type { ProviderId, ProviderModelInfo, ProviderPreset, ProviderQuota } from './types'
 import type { xTokenState } from './state'
-import type { ProviderId, ProviderPreset, ProviderQuota } from './types'
-import { describeFreeTier, describeQuota, formatCount, maskToken } from './utils'
 
 /** Collaborators the dashboard needs to render itself. */
 export interface DashboardDeps {
@@ -34,6 +34,8 @@ export type DashboardNode =
     requests: number
     tokens: number
     quota: ProviderQuota | undefined
+    /** Model preferred via `xToken.selectModel`, when one is set. */
+    model: ProviderModelInfo | undefined
   }
   | { kind: 'key', providerId: ProviderId, masked: string, active: boolean }
 
@@ -74,9 +76,12 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
               : vscode.TreeItemCollapsibleState.Collapsed
         )
         item.iconPath = new vscode.ThemeIcon(node.active ? 'verify' : 'circle-large-outline')
-        item.description = node.active
-          ? `active • ${node.keyCount} 🔑`
-          : `${node.keyCount} • key(s)`
+        item.description = [
+          node.active
+            ? `active \u2022 ${node.keyCount} 🔑`
+            : `${node.keyCount} \u2022 key(s)`,
+          node.model ? `\u2022 ${node.model.id}` : undefined
+        ].filter(part => part !== undefined).join(' ')
         item.tooltip = new vscode.MarkdownString(
           [
             `**${preset.name}**${node.active ? ' \u00b7 active provider' : ''}`,
@@ -84,6 +89,9 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
             node.quota
               ? `${describeQuota(node.quota.remaining, node.quota.limit)} (live)`
               : 'live quota: not fetched',
+            node.model
+              ? `Preferred model: \`${node.model.id}\``
+              : 'Preferred model: provider default (`xToken.selectModel` to pick one)',
             `Today: ${formatCount(node.requests)} request(s), ${formatCount(node.tokens)} token(s)`,
             preset.summary
           ].join('\n\n'))
@@ -151,7 +159,8 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
         keyCount: ring[preset.id]?.length ?? 0,
         requests: usage.requests,
         tokens: usage.tokens,
-        quota: quotaCache.get(preset.id)
+        quota: quotaCache.get(preset.id),
+        model: state.preferredModel(preset.id)
       }
     })
   }

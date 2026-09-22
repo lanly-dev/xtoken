@@ -32,6 +32,13 @@
         "icon": "$(list-selection)"
       },
       {
+        "command": "xToken.selectModel",
+        "title": "Select Preferred Model",
+        "category": "xToken",
+        "shortTitle": "Select Model",
+        "icon": "$(symbol-enum)"
+      },
+      {
         "command": "xToken.showToken",
         "title": "Show Active Token",
         "category": "xToken",
@@ -123,6 +130,11 @@
           "command": "xToken.openSiteUrl",
           "when": "view == xToken.dashboard && viewItem =~ /^xToken\\.provider(Active)?$/",
           "group": "inline@2"
+        },
+        {
+          "command": "xToken.selectModel",
+          "when": "view == xToken.dashboard && viewItem =~ /^xToken\\.provider(Active)?$/",
+          "group": "inline@3"
         }
       ],
       "commandPalette": [
@@ -136,6 +148,10 @@
         },
         {
           "command": "xToken.selectProvider",
+          "when": "true"
+        },
+        {
+          "command": "xToken.selectModel",
           "when": "true"
         },
         {

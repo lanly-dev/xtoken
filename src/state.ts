@@ -1,7 +1,8 @@
 /**
  * Daily claim guard and usage ledger, persisted in `globalState`.
  *
- * Storage keys are stable: `lastClaimDate`, `activeProvider` and `usageByDate`.
+ * Storage keys are stable: `lastClaimDate`, `activeProvider`, `usageByDate`
+ * and `preferredModels`.
  * The legacy `keyRotationIndex` cursor (manual rotation) is only cleared on
  * reset. Usage is pruned to the most recent `USAGE_HISTORY_DAYS` days
  * on every write so the memento cannot grow without bound.
@@ -11,13 +12,14 @@ import * as vscode from 'vscode'
 import {
   STATE_ACTIVE_PROVIDER,
   STATE_LAST_CLAIM_DATE,
+  STATE_PREFERRED_MODELS,
   STATE_ROTATION_INDEX,
   STATE_USAGE,
   USAGE_HISTORY_DAYS
 } from './constants'
 import type { Logger } from './logger'
 import { isProviderId } from './providers'
-import type { ProviderId, ProviderUsage, UsageHistory, UsageSnapshot } from './types'
+import type { ProviderId, ProviderModelInfo, ProviderUsage, UsageHistory, UsageSnapshot } from './types'
 import { daysBetween, todayKey } from './utils'
 
 const EMPTY_USAGE: ProviderUsage = { requests: 0, tokens: 0 }
@@ -58,6 +60,31 @@ export class xTokenState {
 
   async setActiveProvider(providerId: ProviderId | undefined): Promise<void> {
     await this.memento.update(STATE_ACTIVE_PROVIDER, providerId)
+  }
+
+  /** Preferred model stored for a provider via `xToken.selectModel`. */
+  preferredModel(providerId: ProviderId | undefined): ProviderModelInfo | undefined {
+    if (!providerId)
+      return undefined
+    const stored = this.memento.get<Record<string, ProviderModelInfo>>(STATE_PREFERRED_MODELS)
+    const model = stored?.[providerId]
+    return model && typeof model.id === 'string' && model.id !== '' ? model : undefined
+  }
+
+  /** Persist (or, with `undefined`, clear) the preferred model of a provider. */
+  async setPreferredModel(providerId: ProviderId, model: ProviderModelInfo | undefined): Promise<void> {
+    const stored = { ...(this.memento.get<Record<string, ProviderModelInfo>>(STATE_PREFERRED_MODELS) ?? {}) }
+    if (model)
+      stored[providerId] = model
+    else
+      delete stored[providerId]
+    const remaining = Object.keys(stored).length > 0 ? stored : undefined
+    await this.memento.update(STATE_PREFERRED_MODELS, remaining)
+    this.logger.debug(
+      model
+        ? `Preferred model for ${providerId} set to ${model.id}`
+        : `Preferred model for ${providerId} cleared`
+    )
   }
 
   /** Usage recorded for a single day. */
