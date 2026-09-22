@@ -23,6 +23,7 @@ export const SECRET_KEY_RING = 'xToken_api_key_ring'
 export const STATE_LAST_CLAIM_DATE = 'lastClaimDate'
 export const STATE_ACTIVE_PROVIDER = 'activeProvider'
 export const STATE_USAGE = 'usageByDate'
+/** Legacy manual-rotation cursor; only cleared in `resetSession` now. */
 export const STATE_ROTATION_INDEX = 'keyRotationIndex'
 
 /** How many days of usage history are retained in globalState. */
@@ -34,7 +35,6 @@ export const COMMANDS = {
   showToken: 'xToken.showToken',
   clearToken: 'xToken.clearToken',
   setKey: 'xToken.setKey',
-  rotateKey: 'xToken.rotateKey',
   showUsage: 'xToken.showUsage',
   refreshStatus: 'xToken.refreshStatus',
   openSiteUrl: 'xToken.openSiteUrl'
@@ -53,7 +53,6 @@ export const LEGACY_SERVER_URL_SETTING = 'xToken.serverUrl'
 
 /** Context keys used by `when` clauses in package.json. */
 export const CONTEXT_HAS_KEY = 'xtoken.hasKey'
-export const CONTEXT_KEY_COUNT = 'xtoken.keyCount'
 export const CONTEXT_ACTIVE_PROVIDER = 'xtoken.activeProvider'
 
 export const DEFAULT_REQUEST_TIMEOUT_SECONDS = 20

@@ -224,7 +224,7 @@ function hintFor(error: xTokenError): string | undefined {
     case 'unauthorized':
       return 'The provider rejected this key. Create a fresh free key and paste it again.'
     case 'rate-limited':
-      return 'The provider is throttling this key. Wait a moment or rotate to another stored key.'
+      return 'The provider is throttling this key. Wait a moment before trying again.'
     case 'endpoint-unsupported':
       return 'xtoken.serverUrl must accept a JSON POST and answer with a token field.'
     default:

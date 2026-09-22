@@ -142,6 +142,5 @@ export interface xTokenApi {
   getKeyCount(): Promise<number>
   recordUsage(providerId: ProviderId, tokens?: number): Promise<ProviderUsage>
   getTodayUsage(): Record<string, ProviderUsage>
-  rotateKey(): Promise<string | undefined>
   refreshUi(): Promise<void>
 }

@@ -67,9 +67,11 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
         const preset = node.preset
         const item = new vscode.TreeItem(
           preset.name,
-          node.keyCount > 0 && node.active
-            ? vscode.TreeItemCollapsibleState.Expanded
-            : vscode.TreeItemCollapsibleState.Collapsed
+          node.keyCount === 0
+            ? vscode.TreeItemCollapsibleState.None
+            : node.active
+              ? vscode.TreeItemCollapsibleState.Expanded
+              : vscode.TreeItemCollapsibleState.Collapsed
         )
         item.iconPath = new vscode.ThemeIcon(node.active ? 'verify' : 'circle-large-outline')
         item.description = node.active
@@ -107,11 +109,12 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
     if (element.kind !== 'provider')
       return []
     const keys = await this.deps.keys.listKeys(element.preset.id)
-    return keys.map((key, index) => ({
+    const activeToken = element.active ? await this.deps.keys.getActiveToken() : undefined
+    return keys.map(key => ({
       kind: 'key' as const,
       providerId: element.preset.id,
       masked: maskToken(key),
-      active: element.active && index === 0
+      active: key === activeToken
     }))
   }
 

@@ -7,17 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- Inline `$(add)` button on every provider row of the dashboard; it runs
+  `xToken.setKey` for that provider directly, no picker needed. Keyless
+  providers render as leaf rows and expand into one child per stored key
+  (masked, marked active) once a key has been added.
+
 ### Removed
 
 - The right-aligned status bar item (`$(key) xToken: Active` /
   `$(warning) xToken: No Key`) together with its tooltip and busy spinner.
 - The `xtoken.usageInStatusBar` setting, which only fed the status bar label.
+- Manual key rotation: the `xToken.rotateKey` command, its inline `$(refresh)`
+  button on active provider rows, and the **Rotate Key** actions in the
+  store-key toast and startup-verification dialog. Rotation is automated only,
+  driven by `xtoken.autoRotateOnFailure` (default on).
+- The exported API method `rotateKey()` from `xTokenApi`.
+- The `xtoken.keyCount` context key, which only gated `xToken.rotateKey`.
+- The per-provider `keyRotationIndex` rotation cursor from `globalState`
+  (existing values are still cleared by `xToken.clearToken`) and the
+  `KeyStore.rotate`/`activateIndex` helpers behind it.
 
 ### Changed
 
 - The exported API method `refreshStatusBar` was renamed to `refreshUi`; it
   still refreshes live quotas on demand, publishes the `xtoken.*` context keys
   and repaints the dashboard.
+- Startup verification (`xtoken.verifyOnStartup`) now runs through the same
+  automated failover as key storage: other stored keys are tried before it
+  warns, and the warning offers **Replace Key** / **Select Provider** only.
+- The dashboard marks the active key child by comparing it against the stored
+  active token instead of assuming the first ring entry.
 
 ## [1.0.0] - 2026-09-21
 

@@ -4,8 +4,8 @@
  * Two secrets are maintained:
  *  - `xToken_api_key`      the currently active token (plain and easy to consume)
  *  - `xToken_api_key_ring` JSON map of provider id to ordered key list, which
- *                             is what makes rotation across several free keys
- *                             from the same provider possible.
+ *                             is what lets xToken fail over across several free
+ *                             keys from the same provider when one is refused.
  */
 import * as vscode from 'vscode'
 
@@ -14,13 +14,6 @@ import type { Logger } from './logger'
 import { isProviderId } from './providers'
 import type { KeyRing, ProviderId } from './types'
 import { maskToken } from './utils'
-
-export interface RotationResult {
-  providerId: ProviderId
-  key: string
-  index: number
-  count: number
-}
 
 export class KeyStore {
   constructor(private readonly secrets: vscode.SecretStorage, private readonly logger: Logger) {}
@@ -44,22 +37,13 @@ export class KeyStore {
     return Object.values(ring).reduce((total, keys) => total + keys.length, 0)
   }
 
-  /** Provider ids that currently have at least one stored key. */
-  async providersWithKeys(): Promise<ProviderId[]> {
-    const ring = await this.readRing()
-    return Object.entries(ring)
-      .filter(([, keys]) => keys.length > 0)
-      .map(([providerId]) => providerId)
-      .filter(isProviderId)
-  }
-
   async hasAnyKey(): Promise<boolean> {
     return (await this.getKeyCount()) > 0
   }
 
   /**
    * Append a key to a provider's ring. Duplicates are ignored; once the ring is
-   * full the oldest key is dropped so a rotation can always make progress.
+   * full the oldest key is dropped.
    */
   async addKey(
     providerId: ProviderId,
@@ -105,8 +89,7 @@ export class KeyStore {
 
   /**
    * Make a key the active token. The key is added to the provider's ring when it
-   * is not there yet, and the ring index is returned so the caller can persist the
-   * rotation cursor.
+   * is not there yet; the ring index is returned.
    */
   async setActive(providerId: ProviderId, apiKey: string, maxKeys?: number): Promise<number> {
     const key = apiKey.trim()
@@ -115,23 +98,6 @@ export class KeyStore {
     const index = (await this.listKeys(providerId)).indexOf(key)
     this.logger.info(`Active token set for ${providerId}: ${maskToken(key)}`)
     return index < 0 ? 0 : index
-  }
-
-  /** Activate the key at `index`, wrapping around the ring. */
-  async activateIndex(providerId: ProviderId, index: number): Promise<RotationResult | undefined> {
-    const keys = await this.listKeys(providerId)
-    if (keys.length === 0)
-      return undefined
-    const normalized = ((index % keys.length) + keys.length) % keys.length
-    const key = keys[normalized]
-    await this.secrets.store(SECRET_ACTIVE_TOKEN, key)
-    this.logger.info(`Rotated ${providerId} to key ${normalized + 1}/${keys.length} (${maskToken(key)})`)
-    return { providerId, key, index: normalized, count: keys.length }
-  }
-
-  /** Advance to the next key in the ring, starting from `fromIndex`. */
-  async rotate(providerId: ProviderId, fromIndex: number): Promise<RotationResult | undefined> {
-    return this.activateIndex(providerId, fromIndex + 1)
   }
 
   /** Forget every key for one provider. Returns how many were removed. */

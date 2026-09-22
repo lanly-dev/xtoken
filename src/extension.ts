@@ -6,7 +6,6 @@ import {
   commandFetchToken,
   commandOpenKeyUrl,
   commandRefreshStatus,
-  commandRotateKey,
   commandSelectProvider,
   commandSetKey,
   commandShowToken,
@@ -55,18 +54,17 @@ export async function activate(context: ExtensionContext): Promise<xTokenApi> {
   const d2 = rc(COMMANDS.selectProvider, () => commandSelectProvider(rt))
   const d3 = rc(COMMANDS.showToken, () => commandShowToken(rt))
   const d4 = rc(COMMANDS.clearToken, () => commandClearToken(rt))
-  const d5 = rc(COMMANDS.setKey, () => commandSetKey(rt))
-  const d6 = rc(COMMANDS.rotateKey, () => commandRotateKey(rt))
-  const d7 = rc(COMMANDS.showUsage, () => commandShowUsage(rt))
-  const d8 = rc(COMMANDS.refreshStatus, () => commandRefreshStatus(rt))
-  const d9 = rc(COMMANDS.openSiteUrl, node => commandOpenKeyUrl(rt, node))
+  const d5 = rc(COMMANDS.setKey, arg => commandSetKey(rt, arg))
+  const d6 = rc(COMMANDS.showUsage, () => commandShowUsage(rt))
+  const d7 = rc(COMMANDS.refreshStatus, () => commandRefreshStatus(rt))
+  const d8 = rc(COMMANDS.openSiteUrl, node => commandOpenKeyUrl(rt, node))
 
   const [onConfigChange, onSecretsChange] = registerEventListeners(rt)
   const dashboardView = window.createTreeView('xToken.dashboard', { treeDataProvider: dashboard })
 
   context.subscriptions.push(
     logger,
-    d1, d2, d3, d4, d5, d6, d7, d8, d9,
+    d1, d2, d3, d4, d5, d6, d7, d8,
     onConfigChange, onSecretsChange,
     dashboardView
   )

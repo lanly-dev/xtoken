@@ -1,8 +1,9 @@
 /**
  * Daily claim guard and usage ledger, persisted in `globalState`.
  *
- * Storage keys are stable: `lastClaimDate`, `activeProvider`, `keyRotationIndex`
- * and `usageByDate`. Usage is pruned to the most recent `USAGE_HISTORY_DAYS` days
+ * Storage keys are stable: `lastClaimDate`, `activeProvider` and `usageByDate`.
+ * The legacy `keyRotationIndex` cursor (manual rotation) is only cleared on
+ * reset. Usage is pruned to the most recent `USAGE_HISTORY_DAYS` days
  * on every write so the memento cannot grow without bound.
  */
 import * as vscode from 'vscode'
@@ -59,19 +60,6 @@ export class xTokenState {
     await this.memento.update(STATE_ACTIVE_PROVIDER, providerId)
   }
 
-  /** Rotation cursor for a provider's key ring. */
-  getRotationIndex(providerId: ProviderId): number {
-    const indexes = this.memento.get<Record<string, number>>(STATE_ROTATION_INDEX) ?? {}
-    const value = indexes[providerId]
-    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0
-  }
-
-  async setRotationIndex(providerId: ProviderId, index: number): Promise<void> {
-    const indexes = { ...(this.memento.get<Record<string, number>>(STATE_ROTATION_INDEX) ?? {}) }
-    indexes[providerId] = Math.max(0, Math.floor(index))
-    await this.memento.update(STATE_ROTATION_INDEX, indexes)
-  }
-
   /** Usage recorded for a single day. */
   getUsage(date: string = todayKey()): Record<string, ProviderUsage> {
     return this.usageHistory()[date] ?? {}
@@ -124,12 +112,12 @@ export class xTokenState {
     this.logger.info('Usage history cleared')
   }
 
-  /** Forget the daily claim guard, the active provider and rotation cursors. */
+  /** Forget the daily claim guard, the active provider and the legacy rotation cursor. */
   async resetSession(): Promise<void> {
     await this.memento.update(STATE_LAST_CLAIM_DATE, undefined)
     await this.memento.update(STATE_ACTIVE_PROVIDER, undefined)
     await this.memento.update(STATE_ROTATION_INDEX, undefined)
-    this.logger.info('Claim guard, active provider and rotation cursors cleared')
+    this.logger.info('Claim guard, active provider and legacy rotation cursor cleared')
   }
 }
 

@@ -13,7 +13,6 @@ import {
   CONFIG_SECTION,
   CONTEXT_ACTIVE_PROVIDER,
   CONTEXT_HAS_KEY,
-  CONTEXT_KEY_COUNT,
   EXTENSION_NAME,
   LEGACY_SERVER_URL_SETTING
 } from './constants'
@@ -87,6 +86,11 @@ function isDashboardProviderNode(value: unknown): value is Extract<DashboardNode
   return typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'provider'
 }
 
+/** Type guard for a `ProviderPreset` passed straight into a command. */
+function isPreset(value: unknown): value is ProviderPreset {
+  return typeof value === 'object' && value !== null && isProviderId((value as { id?: unknown }).id)
+}
+
 export function registerEventListeners(rt: Runtime): vscode.Disposable[] {
   const configuration = vscode.workspace.onDidChangeConfiguration(event => {
     const relevant = event.affectsConfiguration(CONFIG_SECTION)
@@ -116,17 +120,6 @@ export function createApi(rt: Runtime): xTokenApi {
     getKeyCount: () => rt.keys.getKeyCount(),
     recordUsage: (providerId, tokens = 0) => rt.state.recordRequest(providerId, tokens),
     getTodayUsage: () => rt.state.getUsage(),
-    rotateKey: async () => {
-      const activeId = rt.state.activeProvider
-      if (!activeId)
-        return undefined
-      const rotated = await rt.keys.rotate(activeId, rt.state.getRotationIndex(activeId))
-      if (rotated) {
-        await rt.state.setRotationIndex(activeId, rotated.index)
-        await refreshUi(rt)
-      }
-      return rotated?.key
-    },
     refreshUi: () => refreshUi(rt)
   }
 }
@@ -379,7 +372,6 @@ async function storeKey(
   const { added, count } = await rt.keys.addKey(preset.id, apiKey, config.maxKeysPerProvider)
   const index = await rt.keys.setActive(preset.id, apiKey, config.maxKeysPerProvider)
   await rt.state.setActiveProvider(preset.id)
-  await rt.state.setRotationIndex(preset.id, index)
   if (options.markClaimed)
     await rt.state.markClaimed(todayKey())
   if (options.recordRequest)
@@ -541,10 +533,20 @@ export async function commandShowToken(rt: Runtime): Promise<void> {
   }
 }
 
-/** `xToken.setKey`: paste a key for a provider, verify it, then store it. */
-export async function commandSetKey(rt: Runtime, presetOverride?: ProviderPreset): Promise<void> {
+/**
+ * `xToken.setKey`: paste a key for a provider, verify it, then store it.
+ * `source` may be a `ProviderPreset`, a dashboard provider node (the inline
+ * `+` button) or `undefined`, which falls back to the active provider and
+ * finally the provider picker.
+ */
+export async function commandSetKey(rt: Runtime, source?: unknown): Promise<void> {
   const config = readConfig()
-  const preset = presetOverride
+  let explicit: ProviderPreset | undefined
+  if (isPreset(source))
+    explicit = source
+  else if (isDashboardProviderNode(source))
+    explicit = source.preset
+  const preset = explicit
     ?? getProvider(rt.state.activeProvider)
     ?? (await ui.pickProvider(rt.state.activeProvider))
   if (!preset)
@@ -575,13 +577,10 @@ export async function commandSetKey(rt: Runtime, presetOverride?: ProviderPreset
     await refreshUi(rt, { forceQuota: true })
     const picked = await vscode.window.showInformationMessage(
       `${EXTENSION_NAME}: ${preset.name} key stored as ${maskToken(apiKey)}. ${verification.detail}`,
-      'Show Usage',
-      'Rotate Key'
+      'Show Usage'
     )
     if (picked === 'Show Usage')
       await commandShowUsage(rt)
-    if (picked === 'Rotate Key')
-      await commandRotateKey(rt)
   } catch (error) {
     await handleFailure(rt, error, `verify and store the ${preset.name} key`, () => {
       void commandSetKey(rt, preset)
@@ -666,81 +665,6 @@ export async function commandClearToken(rt: Runtime): Promise<void> {
 async function clearWorkspaceState(context: vscode.ExtensionContext): Promise<void> {
   for (const key of context.workspaceState.keys())
     await context.workspaceState.update(key, undefined)
-}
-
-/** `xToken.rotateKey`: switch to the next stored key for a provider. */
-export async function commandRotateKey(rt: Runtime): Promise<void> {
-  const providerIds = await rt.keys.providersWithKeys()
-  if (providerIds.length === 0) {
-    const picked = await vscode.window.showWarningMessage(
-      `${EXTENSION_NAME}: there are no stored keys to rotate between.`,
-      'Add Key',
-      'Select Provider'
-    )
-    if (picked === 'Add Key')
-      await commandSetKey(rt)
-    if (picked === 'Select Provider')
-      await commandSelectProvider(rt)
-    return
-  }
-
-  const providerId = await resolveRotationProvider(rt, providerIds)
-  if (!providerId)
-    return
-  const preset = requireProvider(providerId)
-  const keys = await rt.keys.listKeys(providerId)
-  if (keys.length < 2) {
-    const picked = await vscode.window.showInformationMessage(
-      `${EXTENSION_NAME}: ${preset.name} has a single stored key (${maskToken(keys[0] ?? '')}). `
-      + 'Add another one to rotate between free allowances.',
-      'Add Another Key'
-    )
-    if (picked === 'Add Another Key')
-      await commandSetKey(rt, preset)
-    return
-  }
-
-  const rotated = await rt.keys.rotate(providerId, rt.state.getRotationIndex(providerId))
-  if (!rotated) {
-    void vscode.window.showWarningMessage(`${EXTENSION_NAME}: nothing to rotate for ${preset.name}.`)
-    return
-  }
-  await rt.state.setRotationIndex(providerId, rotated.index)
-  await rt.state.setActiveProvider(providerId)
-  await refreshUi(rt)
-
-  const picked = await vscode.window.showInformationMessage(
-    `${EXTENSION_NAME}: rotated ${preset.name} to key ${rotated.index + 1}/${rotated.count} `
-    + `(${maskToken(rotated.key)}).`,
-    'Copy Key',
-    'Show Token'
-  )
-  if (picked === 'Copy Key')
-    await ui.copyToClipboard(rotated.key, `${preset.name} token`)
-  if (picked === 'Show Token')
-    await commandShowToken(rt)
-}
-
-/** Pick which provider to rotate through when several of them hold keys. */
-async function resolveRotationProvider(rt: Runtime, providerIds: ProviderId[]): Promise<ProviderId | undefined> {
-  const activeId = rt.state.activeProvider
-  if (activeId && providerIds.includes(activeId))
-    return activeId
-  if (providerIds.length === 1)
-    return providerIds[0]
-
-  interface ProviderChoice extends vscode.QuickPickItem {
-    providerId: ProviderId
-  }
-  const picked = await vscode.window.showQuickPick<ProviderChoice>(
-    providerIds.map(providerId => ({
-      label: requireProvider(providerId).name,
-      description: describeFreeTier(requireProvider(providerId)),
-      providerId
-    })),
-    { title: `${EXTENSION_NAME}: rotate which provider?`, ignoreFocusOut: true }
-  )
-  return picked?.providerId
 }
 
 /** `xToken.showUsage`: today's ledger plus live provider quota counters. */
@@ -915,7 +839,6 @@ export async function refreshUi(rt: Runtime, options: { forceQuota?: boolean } =
 /** Publish the `xtoken.*` context keys that drive command enablement and menus. */
 async function applyContextKeys(rt: Runtime): Promise<void> {
   await vscode.commands.executeCommand('setContext', CONTEXT_HAS_KEY, await rt.keys.hasAnyKey())
-  await vscode.commands.executeCommand('setContext', CONTEXT_KEY_COUNT, await rt.keys.getKeyCount())
   await vscode.commands.executeCommand('setContext', CONTEXT_ACTIVE_PROVIDER, rt.state.activeProvider ?? '')
 }
 
@@ -975,7 +898,7 @@ function buildClaimPayload(
   }
 }
 
-/** Optional startup check: verify the active key and offer a rotation when it fails. */
+/** Optional startup check: verify the active key, trying other stored keys first. */
 export async function verifyActiveKeyQuietly(rt: Runtime): Promise<void> {
   const config = readConfig()
   const token = await rt.keys.getActiveToken()
@@ -985,11 +908,11 @@ export async function verifyActiveKeyQuietly(rt: Runtime): Promise<void> {
 
   rt.logger.debug(`Verifying the active ${preset.name} key after startup`)
   try {
-    const verification = await requireModule(preset.id).verifyKey(token, {
+    const { verification } = await verifyWithRotation(rt, preset, token, {
       timeoutMs: config.requestTimeoutMs,
       logger: rt.logger,
       version: rt.version
-    })
+    }, config)
     if (verification.ok) {
       rt.logger.info(`Startup verification succeeded: ${verification.detail}`)
       return
@@ -998,12 +921,9 @@ export async function verifyActiveKeyQuietly(rt: Runtime): Promise<void> {
     rt.logger.warn(`Startup verification failed: ${verification.detail}`)
     const picked = await vscode.window.showWarningMessage(
       `${EXTENSION_NAME}: ${preset.name} no longer accepts the active key (HTTP ${verification.status ?? 'n/a'}).`,
-      'Rotate Key',
       'Replace Key',
       'Select Provider'
     )
-    if (picked === 'Rotate Key')
-      await commandRotateKey(rt)
     if (picked === 'Replace Key')
       await commandSetKey(rt, preset)
     if (picked === 'Select Provider')

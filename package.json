@@ -52,15 +52,7 @@
         "title": "Add or Replace API Key",
         "category": "xToken",
         "shortTitle": "Set API Key",
-        "icon": "$(edit)"
-      },
-      {
-        "command": "xToken.rotateKey",
-        "title": "Rotate to Next Stored Key",
-        "category": "xToken",
-        "shortTitle": "Rotate Key",
-        "icon": "$(refresh)",
-        "enablement": "xtoken.keyCount > 1"
+        "icon": "$(add)"
       },
       {
         "command": "xToken.openSiteUrl",
@@ -123,13 +115,13 @@
       ],
       "view/item/context": [
         {
-          "command": "xToken.rotateKey",
-          "when": "view == xToken.dashboard && viewItem == xToken.providerActive",
+          "command": "xToken.setKey",
+          "when": "view == xToken.dashboard && viewItem =~ /^xToken\\.provider(Active)?$/",
           "group": "inline@1"
         },
         {
           "command": "xToken.openSiteUrl",
-          "when": "view == xToken.dashboard && viewItem =~ /xToken.provider/",
+          "when": "view == xToken.dashboard && viewItem =~ /^xToken\\.provider(Active)?$/",
           "group": "inline@2"
         }
       ],
@@ -165,10 +157,6 @@
         {
           "command": "xToken.clearToken",
           "when": "xtoken.hasKey"
-        },
-        {
-          "command": "xToken.rotateKey",
-          "when": "xtoken.keyCount > 1"
         }
       ]
     },
@@ -217,7 +205,7 @@
           "default": 8,
           "minimum": 1,
           "maximum": 32,
-          "markdownDescription": "How many keys are kept per provider inside the rotation ring stored in Secret Storage. When the ring is full the oldest key is dropped."
+          "markdownDescription": "How many keys are kept per provider in Secret Storage. When the ring is full the oldest key is dropped."
         },
         "xtoken.autoRotateOnFailure": {
           "type": "boolean",
