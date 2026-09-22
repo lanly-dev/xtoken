@@ -36,7 +36,8 @@ export const COMMANDS = {
   setKey: 'xToken.setKey',
   rotateKey: 'xToken.rotateKey',
   showUsage: 'xToken.showUsage',
-  refreshStatus: 'xToken.refreshStatus'
+  refreshStatus: 'xToken.refreshStatus',
+  openSiteUrl: 'xToken.openSiteUrl'
 } as const
 
 export type CommandId = (typeof COMMANDS)[keyof typeof COMMANDS];

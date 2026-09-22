@@ -15,6 +15,7 @@
  *   xToken.rotateKey       cycle through stored keys for a provider
  *   xToken.showUsage       daily ledger and live quota counters
  *   xToken.refreshStatus   re-read quota counters and repaint the status bar
+ *   xToken.openSiteUrl      open the provider's "get an API key" page
  */
 import * as vscode from 'vscode'
 
@@ -35,9 +36,9 @@ import {
   LEGACY_SERVER_URL_SETTING
 } from './constants'
 import { hasInvalidEndpoint, readConfig, type xTokenConfig } from './config'
-import { DashboardTree } from './treeview'
+import { DashboardTree, type DashboardNode } from './treeview'
 import { Logger } from './logger'
-import { AVAILABLE_PROVIDERS, getProvider, PROVIDERS, requireProvider } from './providers'
+import { AVAILABLE_PROVIDERS, getProvider, isProviderId, PROVIDERS, requireProvider } from './providers'
 import { KeyStore } from './secrets'
 import { StatusBarController } from './statusBar'
 import { xTokenState } from './state'
@@ -142,20 +143,43 @@ function registerCommands(rt: Runtime): vscode.Disposable[] {
     register(rt, COMMANDS.setKey, () => commandSetKey(rt)),
     register(rt, COMMANDS.rotateKey, () => commandRotateKey(rt)),
     register(rt, COMMANDS.showUsage, () => commandShowUsage(rt)),
-    register(rt, COMMANDS.refreshStatus, () => commandRefreshStatus(rt))
+    register(rt, COMMANDS.refreshStatus, () => commandRefreshStatus(rt)),
+    register(rt, COMMANDS.openSiteUrl, node => commandOpenKeyUrl(rt, node))
   ]
 }
 
 /** Wrap a command so any unhandled rejection still reaches the user. */
-function register(rt: Runtime, commandId: string, handler: () => Promise<void> | void): vscode.Disposable {
-  return vscode.commands.registerCommand(commandId, async () => {
+function register(rt: Runtime, commandId: string, handler: (arg?: unknown) => Promise<void> | void): vscode.Disposable {
+  return vscode.commands.registerCommand(commandId, async (arg?: unknown) => {
     rt.logger.debug(`Command ${commandId} invoked`)
     try {
-      await handler()
+      await handler(arg)
     } catch (error) {
       await reportUnexpected(rt, error, commandId)
     }
   })
+}
+
+/**
+ * Open the provider's "get an API key" page in the user's browser. Invoked from
+ * the inline dashboard button, so the argument is normally the provider node;
+ * fall back to the active provider when called programmatically with an id.
+ */
+async function commandOpenKeyUrl(rt: Runtime, source: unknown): Promise<void> {
+  const preset = isDashboardProviderNode(source)
+    ? source.preset
+    : getProvider(isProviderId(source) ? source : rt.state.activeProvider)
+  if (!preset) {
+    await vscode.window.showInformationMessage(`${EXTENSION_NAME}: pick a provider in the dashboard first.`)
+    return
+  }
+  rt.logger.info(`Opening the ${preset.name} key page: ${preset.keyUrl}`)
+  await vscode.env.openExternal(vscode.Uri.parse(preset.keyUrl))
+}
+
+/** Type guard for dashboard provider nodes passed in from tree item menus. */
+function isDashboardProviderNode(value: unknown): value is Extract<DashboardNode, { kind: 'provider' }> {
+  return typeof value === 'object' && value !== null && (value as { kind?: unknown }).kind === 'provider'
 }
 
 function registerEventListeners(rt: Runtime): vscode.Disposable[] {

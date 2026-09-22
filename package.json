@@ -63,6 +63,13 @@
         "enablement": "xtoken.keyCount > 1"
       },
       {
+        "command": "xToken.openSiteUrl",
+        "title": "Get API Key",
+        "category": "xToken",
+        "shortTitle": "Get API Key",
+        "icon": "$(link)"
+      },
+      {
         "command": "xToken.showUsage",
         "title": "Show Daily Usage and Quotas",
         "category": "xToken",
@@ -119,9 +126,18 @@
           "command": "xToken.rotateKey",
           "when": "view == xToken.dashboard && viewItem == xToken.providerActive",
           "group": "inline@1"
+        },
+        {
+          "command": "xToken.openSiteUrl",
+          "when": "view == xToken.dashboard && viewItem =~ /xToken.provider/",
+          "group": "inline@2"
         }
       ],
       "commandPalette": [
+        {
+          "command": "xToken.openSiteUrl",
+          "when": "false"
+        },
         {
           "command": "xToken.fetchToken",
           "when": "true"
