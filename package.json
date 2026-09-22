@@ -78,7 +78,7 @@
       },
       {
         "command": "xToken.refreshStatus",
-        "title": "Refresh Status Bar and Quota Counters",
+        "title": "Refresh Status and Quota Counters",
         "category": "xToken",
         "shortTitle": "Refresh Status",
         "icon": "$(sync)"
@@ -228,11 +228,6 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Ask for confirmation before claiming a token twice on the same calendar day, so a free tier is not burned by accident."
-        },
-        "xtoken.usageInStatusBar": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Append the tracked request count (for example `3/1,500 today`) to the status bar label."
         },
         "xtoken.verifyOnStartup": {
           "type": "boolean",

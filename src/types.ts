@@ -57,7 +57,7 @@ export interface ProviderPreset {
   status: ProviderStatus
   /** One line marketing-free summary shown in QuickPick rows. */
   summary: string
-  /** Theme icon id used in QuickPick rows and status bar tooltips. */
+  /** Theme icon id used in QuickPick rows and dashboard labels. */
   icon: string
   baseUrl: string
   docsUrl: string
@@ -143,5 +143,5 @@ export interface xTokenApi {
   recordUsage(providerId: ProviderId, tokens?: number): Promise<ProviderUsage>
   getTodayUsage(): Record<string, ProviderUsage>
   rotateKey(): Promise<string | undefined>
-  refreshStatusBar(): Promise<void>
+  refreshUi(): Promise<void>
 }

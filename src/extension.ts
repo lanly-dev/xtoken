@@ -13,7 +13,7 @@ import {
   commandShowUsage,
   createApi,
   createCommandRegistrar,
-  refreshStatusBar,
+  refreshUi,
   registerEventListeners,
   verifyActiveKeyQuietly,
   type Runtime
@@ -24,7 +24,6 @@ import { DashboardTree } from './treeview'
 import { hasInvalidEndpoint, readConfig } from './config'
 import { KeyStore } from './secrets'
 import { Logger } from './logger'
-import { StatusBarController } from './statusBar'
 import { xTokenState } from './state'
 import type { ProviderId, ProviderQuota, xTokenApi } from './types'
 
@@ -35,7 +34,6 @@ export async function activate(context: ExtensionContext): Promise<xTokenApi> {
   const logger = new Logger(config.logLevel)
   const state = new xTokenState(context.globalState, logger)
   const keys = new KeyStore(context.secrets, logger)
-  const statusBar = new StatusBarController(logger)
   const quotaCache = new Map<ProviderId, ProviderQuota>()
   const dashboard = new DashboardTree({ state, keys, logger, quotaCache })
 
@@ -44,7 +42,6 @@ export async function activate(context: ExtensionContext): Promise<xTokenApi> {
     logger,
     state,
     keys,
-    statusBar,
     dashboard,
     version: readVersion(context),
     machineId: env.machineId,
@@ -68,7 +65,7 @@ export async function activate(context: ExtensionContext): Promise<xTokenApi> {
   const dashboardView = window.createTreeView('xToken.dashboard', { treeDataProvider: dashboard })
 
   context.subscriptions.push(
-    logger, statusBar,
+    logger,
     d1, d2, d3, d4, d5, d6, d7, d8, d9,
     onConfigChange, onSecretsChange,
     dashboardView
@@ -86,7 +83,7 @@ export async function activate(context: ExtensionContext): Promise<xTokenApi> {
     logger.info(`Claim endpoint configured via ${source}: ${config.serverUrl}`)
   }
 
-  await refreshStatusBar(rt)
+  await refreshUi(rt)
   if (config.verifyOnStartup)
     void verifyActiveKeyQuietly(rt)
 

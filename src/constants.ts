@@ -62,6 +62,3 @@ export const MAX_REQUEST_TIMEOUT_SECONDS = 120
 
 export const DEFAULT_KEYS_PER_PROVIDER = 8
 export const MAX_KEYS_PER_PROVIDER = 32
-
-/** Status bar priority: higher values sit further to the left inside the group. */
-export const STATUS_BAR_PRIORITY = 100

@@ -4,7 +4,7 @@
  * Every `xToken.*` command is implemented in this module; `extension.ts` only
  * registers them against the command palette. All handlers share one
  * {@link Runtime} built during activation, which carries the collaborators
- * created there (logger, state, key store, status bar, dashboard).
+ * created there (logger, state, key store, dashboard).
  */
 import * as vscode from 'vscode'
 
@@ -22,7 +22,6 @@ import type { DashboardNode, DashboardTree } from './treeview'
 import type { Logger } from './logger'
 import { AVAILABLE_PROVIDERS, getProvider, isProviderId, PROVIDERS, requireModule, requireProvider } from './providers'
 import type { KeyStore } from './secrets'
-import type { StatusBarController } from './statusBar'
 import type { xTokenState } from './state'
 import type {
   ClaimRequestPayload,
@@ -40,7 +39,6 @@ export interface Runtime {
   logger: Logger
   state: xTokenState
   keys: KeyStore
-  statusBar: StatusBarController
   /** Activity-bar dashboard tree (mirrors state; refreshed on every repaint). */
   dashboard: DashboardTree
   version: string
@@ -96,13 +94,13 @@ export function registerEventListeners(rt: Runtime): vscode.Disposable[] {
     if (!relevant)
       return
     rt.logger.setLevel(readConfig().logLevel)
-    rt.logger.info('Configuration changed; repainting the status bar')
-    void refreshStatusBar(rt)
+    rt.logger.info('Configuration changed; repainting the UI')
+    void refreshUi(rt)
   })
 
   const secrets = rt.context.secrets.onDidChange(event => {
     rt.logger.debug(`Secret Storage changed (${event.key})`)
-    void refreshStatusBar(rt)
+    void refreshUi(rt)
   })
 
   return [configuration, secrets]
@@ -125,11 +123,11 @@ export function createApi(rt: Runtime): xTokenApi {
       const rotated = await rt.keys.rotate(activeId, rt.state.getRotationIndex(activeId))
       if (rotated) {
         await rt.state.setRotationIndex(activeId, rotated.index)
-        await refreshStatusBar(rt)
+        await refreshUi(rt)
       }
       return rotated?.key
     },
-    refreshStatusBar: () => refreshStatusBar(rt)
+    refreshUi: () => refreshUi(rt)
   }
 }
 
@@ -230,7 +228,6 @@ export async function commandFetchToken(
       return
   }
 
-  rt.statusBar.setBusy(`fetching ${preset.id}`)
   try {
     await vscode.window.withProgress(
       {
@@ -264,7 +261,7 @@ export async function commandFetchToken(
       }
     )
   } finally {
-    await refreshStatusBar(rt)
+    await refreshUi(rt)
   }
 }
 
@@ -434,7 +431,7 @@ async function afterTokenStored(
   preset: ProviderPreset,
   source: AcquisitionSource
 ): Promise<void> {
-  await refreshStatusBar(rt, { forceQuota: true })
+  await refreshUi(rt, { forceQuota: true })
   const active = await rt.keys.getActiveToken()
   const details = source.kind === 'claim-endpoint'
     ? `claimed from ${source.host}${source.expiresAt ? ` (expires ${source.expiresAt})` : ''}`
@@ -557,7 +554,6 @@ export async function commandSetKey(rt: Runtime, presetOverride?: ProviderPreset
   if (!apiKey)
     return
 
-  rt.statusBar.setBusy(`verifying ${preset.id}`)
   try {
     const verification = await requireModule(preset.id).verifyKey(apiKey, {
       timeoutMs: config.requestTimeoutMs,
@@ -576,7 +572,7 @@ export async function commandSetKey(rt: Runtime, presetOverride?: ProviderPreset
     }
 
     await storeKey(rt, preset, apiKey, config, { markClaimed: false })
-    await refreshStatusBar(rt, { forceQuota: true })
+    await refreshUi(rt, { forceQuota: true })
     const picked = await vscode.window.showInformationMessage(
       `${EXTENSION_NAME}: ${preset.name} key stored as ${maskToken(apiKey)}. ${verification.detail}`,
       'Show Usage',
@@ -592,7 +588,7 @@ export async function commandSetKey(rt: Runtime, presetOverride?: ProviderPreset
       return Promise.resolve()
     })
   } finally {
-    await refreshStatusBar(rt)
+    await refreshUi(rt)
   }
 }
 
@@ -660,7 +656,7 @@ export async function commandClearToken(rt: Runtime): Promise<void> {
     await rt.state.resetSession()
 
   await clearWorkspaceState(rt.context)
-  await refreshStatusBar(rt)
+  await refreshUi(rt)
   await vscode.window.showInformationMessage(
     `${EXTENSION_NAME}: removed ${formatCount(removed)} key(s) from Secret Storage and cleared workspace state.`
   )
@@ -711,7 +707,7 @@ export async function commandRotateKey(rt: Runtime): Promise<void> {
   }
   await rt.state.setRotationIndex(providerId, rotated.index)
   await rt.state.setActiveProvider(providerId)
-  await refreshStatusBar(rt)
+  await refreshUi(rt)
 
   const picked = await vscode.window.showInformationMessage(
     `${EXTENSION_NAME}: rotated ${preset.name} to key ${rotated.index + 1}/${rotated.count} `
@@ -815,7 +811,7 @@ export async function commandShowUsage(rt: Runtime): Promise<void> {
         )
         if (confirmed) {
           await rt.state.resetUsage()
-          await refreshStatusBar(rt)
+          await refreshUi(rt)
         }
         continue
       }
@@ -842,7 +838,6 @@ async function refreshQuotas(rt: Runtime, config: xTokenConfig): Promise<void> {
     return
   }
 
-  rt.statusBar.setBusy('refreshing quotas')
   try {
     await vscode.window.withProgress(
       {
@@ -877,25 +872,24 @@ async function refreshQuotas(rt: Runtime, config: xTokenConfig): Promise<void> {
       }
     )
   } finally {
-    await refreshStatusBar(rt)
+    await refreshUi(rt)
   }
 }
 
-/** `xToken.refreshStatus`: re-read counters and repaint the status bar. */
+/** `xToken.refreshStatus`: re-read counters and repaint the dashboard. */
 export async function commandRefreshStatus(rt: Runtime): Promise<void> {
   const preset = getProvider(rt.state.activeProvider)
   if (preset?.quota)
     await refreshQuotas(rt, readConfig())
   else
-    await refreshStatusBar(rt, { forceQuota: true })
-  void vscode.window.showInformationMessage(`${EXTENSION_NAME}: status bar refreshed.`)
+    await refreshUi(rt, { forceQuota: true })
+  void vscode.window.showInformationMessage(`${EXTENSION_NAME}: status refreshed.`)
 }
 
-/** Recompute the status bar model from secrets, state and cached quotas. */
-export async function refreshStatusBar(rt: Runtime, options: { forceQuota?: boolean } = {}): Promise<void> {
+/** Refresh live quota (optional), publish context keys and repaint the dashboard. */
+export async function refreshUi(rt: Runtime, options: { forceQuota?: boolean } = {}): Promise<void> {
   const config = readConfig()
   const token = await rt.keys.getActiveToken()
-  const keyCount = await rt.keys.getKeyCount()
   const preset = getProvider(rt.state.activeProvider)
 
   if (options.forceQuota && preset?.quota && token) {
@@ -914,28 +908,6 @@ export async function refreshStatusBar(rt: Runtime, options: { forceQuota?: bool
     }
   }
 
-  const cached = preset ? rt.quotaCache.get(preset.id) : undefined
-  const requestsToday = preset ? rt.state.requestsToday(preset.id) : 0
-  const tokensToday = preset ? rt.state.tokensToday(preset.id) : 0
-  const remaining = cached?.remaining ?? estimateRemaining(preset, requestsToday)
-
-  rt.statusBar.update({
-    hasKey: token !== undefined,
-    providerName: preset?.name,
-    providerSummary: preset?.summary,
-    keyCount,
-    activeKey: token,
-    requestsToday,
-    tokensToday,
-    freeTierLabel: preset ? describeFreeTier(preset) : undefined,
-    remainingRequests: remaining,
-    quotaDetail: cached ? `${describeQuota(cached.remaining, cached.limit)} (live)` : undefined,
-    lastClaimDate: rt.state.lastClaimDate,
-    pendingClaim: !rt.state.isClaimedToday(),
-    textSuffix: config.usageInStatusBar && preset
-      ? `${formatCount(requestsToday)}/${preset.freeRequestLimit ? formatCount(preset.freeRequestLimit) : '?'} today`
-      : undefined
-  })
   await applyContextKeys(rt)
   rt.dashboard.refresh()
 }

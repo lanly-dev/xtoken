@@ -30,7 +30,6 @@ export interface xTokenConfig {
   maxKeysPerProvider: number
   autoRotateOnFailure: boolean
   dailyClaimReminder: boolean
-  usageInStatusBar: boolean
   verifyOnStartup: boolean
   logLevel: LogLevel
 }
@@ -58,7 +57,6 @@ export function readConfig(): xTokenConfig {
     ),
     autoRotateOnFailure: section.get<boolean>('autoRotateOnFailure') ?? true,
     dailyClaimReminder: section.get<boolean>('dailyClaimReminder') ?? true,
-    usageInStatusBar: section.get<boolean>('usageInStatusBar') ?? true,
     verifyOnStartup: section.get<boolean>('verifyOnStartup') ?? false,
     logLevel: LOG_LEVELS.includes(rawLogLevel as LogLevel) ? (rawLogLevel as LogLevel) : 'info'
   }

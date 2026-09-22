@@ -5,6 +5,20 @@ All notable changes to the **xToken** extension are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+
+- The right-aligned status bar item (`$(key) xToken: Active` /
+  `$(warning) xToken: No Key`) together with its tooltip and busy spinner.
+- The `xtoken.usageInStatusBar` setting, which only fed the status bar label.
+
+### Changed
+
+- The exported API method `refreshStatusBar` was renamed to `refreshUi`; it
+  still refreshes live quotas on demand, publishes the `xtoken.*` context keys
+  and repaints the dashboard.
+
 ## [1.0.0] - 2026-09-21
 
 ### Added
