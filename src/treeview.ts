@@ -75,8 +75,8 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
         )
         item.iconPath = new vscode.ThemeIcon(node.active ? 'verify' : 'circle-large-outline')
         item.description = node.active
-          ? `active \u00b7 ${node.keyCount} key(s) \u00b7 ${formatCount(node.requests)} req today`
-          : `${node.keyCount} key(s) \u00b7 ${formatCount(node.requests)} req today`
+          ? `active • ${node.keyCount} 🔑`
+          : `${node.keyCount} • key(s)`
         item.tooltip = new vscode.MarkdownString(
           [
             `**${preset.name}**${node.active ? ' \u00b7 active provider' : ''}`,

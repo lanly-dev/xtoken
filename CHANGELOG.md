@@ -39,6 +39,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   warns, and the warning offers **Replace Key** / **Select Provider** only.
 - The dashboard marks the active key child by comparing it against the stored
   active token instead of assuming the first ring entry.
+- Provider rows no longer show `N req today` next to the key count: request
+  counters do not apply to every provider (some meter tokens instead), and a
+  per-provider usage display will be figured out later.
 
 ## [1.0.0] - 2026-09-21
 
