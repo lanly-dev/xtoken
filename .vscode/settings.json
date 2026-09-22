@@ -12,7 +12,7 @@
   "js/ts.tsc.autoDetect": "off",
   "cSpell.words": [
     "efix",
-    "etoken"
+    "xtoken"
   ],
   "editor.rulers": [
     120

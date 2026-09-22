@@ -35,6 +35,7 @@ import {
   LEGACY_SERVER_URL_SETTING
 } from './constants'
 import { hasInvalidEndpoint, readConfig, type xTokenConfig } from './config'
+import { DashboardTree } from './treeview'
 import { Logger } from './logger'
 import { AVAILABLE_PROVIDERS, getProvider, PROVIDERS, requireProvider } from './providers'
 import { KeyStore } from './secrets'
@@ -57,6 +58,8 @@ interface Runtime {
   state: xTokenState
   keys: KeyStore
   statusBar: StatusBarController
+  /** Activity-bar dashboard tree (mirrors state; refreshed on every repaint). */
+  dashboard: DashboardTree
   version: string
   machineId: string
   sessionId: string
@@ -76,6 +79,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<xToken
   const state = new xTokenState(context.globalState, logger)
   const keys = new KeyStore(context.secrets, logger)
   const statusBar = new StatusBarController(logger)
+  const quotaCache = new Map<ProviderId, ProviderQuota>()
+  const dashboard = new DashboardTree({ state, keys, logger, quotaCache })
 
   const rt: Runtime = {
     context,
@@ -83,16 +88,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<xToken
     state,
     keys,
     statusBar,
+    dashboard,
     version: readVersion(context),
     machineId: vscode.env.machineId,
     sessionId: vscode.env.sessionId,
-    quotaCache: new Map()
+    quotaCache
   }
   runtime = rt
 
   context.subscriptions.push(logger, statusBar)
   context.subscriptions.push(...registerCommands(rt))
   context.subscriptions.push(...registerEventListeners(rt))
+  // Activity-bar dashboard (lanly-dev/vscode-lemon style tree view).
+  context.subscriptions.push(
+    vscode.window.createTreeView('xToken.dashboard', { treeDataProvider: dashboard })
+  )
 
   logger.info(`${EXTENSION_NAME} v${rt.version} activated (extension host ${vscode.version})`)
   if (hasInvalidEndpoint(config)) {
@@ -994,6 +1004,7 @@ async function refreshStatusBar(rt: Runtime, options: { forceQuota?: boolean } =
       : undefined
   })
   await applyContextKeys(rt)
+  rt.dashboard.refresh()
 }
 
 /** Publish the `xtoken.*` context keys that drive command enablement and menus. */

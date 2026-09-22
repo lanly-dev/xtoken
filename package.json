@@ -1,6 +1,6 @@
 {
-  "name": "etoken",
-  "displayName": "Extra Token",
+  "name": "xtoken",
+  "displayName": "xToken",
   "description": "Download more tokens please",
   "version": "0.0.1",
   "engines": {
@@ -77,7 +77,50 @@
         "icon": "$(sync)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "xToken",
+          "title": "xToken",
+          "icon": "media/temp.svg"
+        }
+      ]
+    },
+    "views": {
+      "xToken": [
+        {
+          "id": "xToken.dashboard",
+          "name": "Dashboard",
+          "icon": "media/temp.svg",
+          "contextualTitle": "xToken"
+        }
+      ]
+    },
     "menus": {
+      "view/title": [
+        {
+          "command": "xToken.refreshStatus",
+          "when": "view == xToken.dashboard",
+          "group": "navigation@1"
+        },
+        {
+          "command": "xToken.showUsage",
+          "when": "view == xToken.dashboard",
+          "group": "navigation@2"
+        },
+        {
+          "command": "xToken.fetchToken",
+          "when": "view == xToken.dashboard",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "xToken.rotateKey",
+          "when": "view == xToken.dashboard && viewItem == xToken.providerActive",
+          "group": "inline@1"
+        }
+      ],
       "commandPalette": [
         {
           "command": "xToken.fetchToken",
