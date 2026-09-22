@@ -8,13 +8,7 @@
  */
 import * as vscode from 'vscode'
 
-import {
-  claimFromServer,
-  fetchProviderQuota,
-  xTokenError,
-  verifyProviderKey,
-  type RequestContext
-} from './api'
+import { xTokenError, type RequestContext } from './api'
 import {
   CONFIG_SECTION,
   CONTEXT_ACTIVE_PROVIDER,
@@ -26,7 +20,7 @@ import {
 import { readConfig, type xTokenConfig } from './config'
 import type { DashboardNode, DashboardTree } from './treeview'
 import type { Logger } from './logger'
-import { AVAILABLE_PROVIDERS, getProvider, isProviderId, PROVIDERS, requireProvider } from './providers'
+import { AVAILABLE_PROVIDERS, getProvider, isProviderId, PROVIDERS, requireModule, requireProvider } from './providers'
 import type { KeyStore } from './secrets'
 import type { StatusBarController } from './statusBar'
 import type { xTokenState } from './state'
@@ -291,7 +285,8 @@ async function acquireToken(
   if (config.serverUrl) {
     progress.report({ message: `Contacting ${hostOf(config.serverUrl)}...`, increment: 15 })
     try {
-      const claimed = await claimFromServer(config.serverUrl, buildClaimPayload(rt, preset, 'daily-claim'), context)
+      const provider = requireModule(preset.id)
+      const claimed = await provider.claim(config.serverUrl, buildClaimPayload(rt, preset, 'daily-claim'), context)
       progress.report({ message: 'Storing the claimed token in Secret Storage...', increment: 60 })
       await storeKey(rt, preset, claimed.token, config, { markClaimed: true, recordRequest: true })
       progress.report({ message: 'Done', increment: 25 })
@@ -410,7 +405,8 @@ async function verifyWithRotation(
   context: RequestContext,
   config: xTokenConfig
 ): Promise<{ key: string, verification: VerificationResult }> {
-  const verification = await verifyProviderKey(preset, apiKey, context)
+  const provider = requireModule(preset.id)
+  const verification = await provider.verifyKey(apiKey, context)
   if (verification.ok || !config.autoRotateOnFailure)
     return { key: apiKey, verification }
 
@@ -423,7 +419,7 @@ async function verifyWithRotation(
     if (candidate === apiKey || context.cancellationToken?.isCancellationRequested)
       continue
     rt.logger.warn(`Key ${maskToken(apiKey)} was refused; trying stored key ${maskToken(candidate)}`)
-    const alternative = await verifyProviderKey(preset, candidate, context)
+    const alternative = await provider.verifyKey(candidate, context)
     if (alternative.ok) {
       await rt.keys.setActive(preset.id, candidate, config.maxKeysPerProvider)
       return { key: candidate, verification: alternative }
@@ -563,7 +559,7 @@ export async function commandSetKey(rt: Runtime, presetOverride?: ProviderPreset
 
   rt.statusBar.setBusy(`verifying ${preset.id}`)
   try {
-    const verification = await verifyProviderKey(preset, apiKey, {
+    const verification = await requireModule(preset.id).verifyKey(apiKey, {
       timeoutMs: config.requestTimeoutMs,
       logger: rt.logger,
       version: rt.version
@@ -864,7 +860,7 @@ async function refreshQuotas(rt: Runtime, config: xTokenConfig): Promise<void> {
           const activeKey = preset.id === rt.state.activeProvider ? await rt.keys.getActiveToken() : undefined
           progress.report({ message: `${preset.name}...` })
           try {
-            const quota = await fetchProviderQuota(preset, activeKey ?? keys[0], {
+            const quota = await requireModule(preset.id).fetchQuota(activeKey ?? keys[0], {
               timeoutMs: config.requestTimeoutMs,
               cancellationToken,
               logger: rt.logger,
@@ -904,7 +900,7 @@ export async function refreshStatusBar(rt: Runtime, options: { forceQuota?: bool
 
   if (options.forceQuota && preset?.quota && token) {
     try {
-      const quota = await fetchProviderQuota(preset, token, {
+      const quota = await requireModule(preset.id).fetchQuota(token, {
         timeoutMs: config.requestTimeoutMs,
         logger: rt.logger,
         version: rt.version
@@ -1017,7 +1013,7 @@ export async function verifyActiveKeyQuietly(rt: Runtime): Promise<void> {
 
   rt.logger.debug(`Verifying the active ${preset.name} key after startup`)
   try {
-    const verification = await verifyProviderKey(preset, token, {
+    const verification = await requireModule(preset.id).verifyKey(token, {
       timeoutMs: config.requestTimeoutMs,
       logger: rt.logger,
       version: rt.version

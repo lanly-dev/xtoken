@@ -1,14 +1,13 @@
 /**
  * Output channel logger with level gating.
  *
- * Tokens are never written to the channel: only masked values from `maskToken`
- * ever reach a log line.
+ * Tokens are never written to the channel: only masked values from `maskToken` ever reach a log line.
  */
 import * as vscode from 'vscode'
 
+import { errorMessage } from './utils'
 import { OUTPUT_CHANNEL_NAME } from './constants'
 import type { LogLevel } from './config'
-import { errorMessage } from './utils'
 
 const LEVEL_WEIGHT: Record<LogLevel, number> = { off: 0, error: 1, warn: 2, info: 3, debug: 4 }
 
@@ -56,8 +55,7 @@ export class Logger implements vscode.Disposable {
   }
 
   private write(level: Exclude<LogLevel, 'off'>, message: string, error?: unknown): void {
-    if (LEVEL_WEIGHT[level] > LEVEL_WEIGHT[this.level])
-      return
+    if (LEVEL_WEIGHT[level] > LEVEL_WEIGHT[this.level]) return
     const stamp = new Date().toISOString()
     const detail = error === undefined ? '' : ` :: ${errorMessage(error)}`
     this.channel.appendLine(`${stamp} [${level.toUpperCase()}] ${message}${detail}`)

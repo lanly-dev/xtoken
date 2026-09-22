@@ -1,22 +1,4 @@
-/**
- * xToken - free-tier API token manager for Visual Studio Code.
- *
- * Activation happens on `onStartupFinished`. This module only wires the
- * extension together: collaborators are created here, every `xToken.*`
- * command is registered inline, and all behaviour lives in the sibling
- * modules (`commands.ts`, `api.ts`, `state.ts`, ...).
- *
- * Command surface:
- *   xToken.fetchToken      claim from xtoken.serverUrl or run guided setup
- *   xToken.selectProvider  QuickPick over every supported free tier
- *   xToken.showToken       reveal the active secret with a copy button
- *   xToken.clearToken      wipe Secret Storage plus workspace state
- *   xToken.setKey          paste and verify a key by hand
- *   xToken.rotateKey       cycle through stored keys for a provider
- *   xToken.showUsage       daily ledger and live quota counters
- *   xToken.refreshStatus   re-read quota counters and repaint the status bar
- *   xToken.openSiteUrl     open the provider's "get an API key" page
- */
+
 import { env, ExtensionContext, version, window } from 'vscode'
 
 import {
@@ -36,13 +18,14 @@ import {
   verifyActiveKeyQuietly,
   type Runtime
 } from './commands'
-import { hasInvalidEndpoint, readConfig } from './config'
+
 import { COMMANDS, EXTENSION_NAME } from './constants'
-import { Logger } from './logger'
+import { DashboardTree } from './treeview'
+import { hasInvalidEndpoint, readConfig } from './config'
 import { KeyStore } from './secrets'
+import { Logger } from './logger'
 import { StatusBarController } from './statusBar'
 import { xTokenState } from './state'
-import { DashboardTree } from './treeview'
 import type { ProviderId, ProviderQuota, xTokenApi } from './types'
 
 let runtime: Runtime | undefined
