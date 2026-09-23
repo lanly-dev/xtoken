@@ -129,11 +129,6 @@ function resolveServerUrl(): {
   return { value: undefined, raw: '', source: 'unset' }
 }
 
-/** True when the user asked xToken to talk to a custom endpoint. */
-export function hasCustomEndpoint(config: xTokenConfig): boolean {
-  return config.serverUrl !== undefined
-}
-
 /** True when a value was supplied but is not a usable URL. */
 export function hasInvalidEndpoint(config: xTokenConfig): boolean {
   return config.rawServerUrl !== '' && config.serverUrl === undefined

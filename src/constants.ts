@@ -8,8 +8,6 @@
 import type { ProviderId } from './types'
 
 export const EXTENSION_NAME = 'xToken'
-export const EXTENSION_ID = 'xToken'
-export const PUBLISHER_ID = 'xToken-dev'
 export const OUTPUT_CHANNEL_NAME = 'xToken'
 
 /**
@@ -150,7 +148,6 @@ export const COMMANDS = {
   openSiteUrl: 'xToken.openSiteUrl'
 } as const
 
-export type CommandId = (typeof COMMANDS)[keyof typeof COMMANDS];
 
 /** Configuration namespace. All contributed settings live under `xtoken.*`. */
 export const CONFIG_SECTION = 'xtoken'

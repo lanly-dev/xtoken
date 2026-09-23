@@ -10,11 +10,9 @@ import * as vscode from 'vscode'
 
 import { xTokenError, type RequestContext } from './api'
 import {
-  CONFIG_SECTION,
   CONTEXT_ACTIVE_PROVIDER,
   CONTEXT_HAS_KEY,
-  EXTENSION_NAME,
-  LEGACY_SERVER_URL_SETTING
+  EXTENSION_NAME
 } from './constants'
 import { readConfig, type xTokenConfig } from './config'
 import type { DashboardNode, DashboardTree } from './treeview'
@@ -90,25 +88,6 @@ function isDashboardProviderNode(value: unknown): value is Extract<DashboardNode
 /** Type guard for a `ProviderPreset` passed straight into a command. */
 function isPreset(value: unknown): value is ProviderPreset {
   return typeof value === 'object' && value !== null && isProviderId((value as { id?: unknown }).id)
-}
-
-export function registerEventListeners(rt: Runtime): vscode.Disposable[] {
-  const configuration = vscode.workspace.onDidChangeConfiguration(event => {
-    const relevant = event.affectsConfiguration(CONFIG_SECTION)
-      || event.affectsConfiguration(LEGACY_SERVER_URL_SETTING)
-    if (!relevant)
-      return
-    rt.logger.setLevel(readConfig().logLevel)
-    rt.logger.info('Configuration changed; repainting the UI')
-    void refreshUi(rt)
-  })
-
-  const secrets = rt.context.secrets.onDidChange(event => {
-    rt.logger.debug(`Secret Storage changed (${event.key})`)
-    void refreshUi(rt)
-  })
-
-  return [configuration, secrets]
 }
 
 /** Public surface for other extensions: `const api = await extensions.getExtension(id)?.activate()`. */

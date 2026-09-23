@@ -2,7 +2,6 @@
  * Dependency free helpers shared by the rest of the extension.
  */
 
-import { EXTENSION_NAME } from './constants'
 import type { ProviderPreset } from './types'
 
 /** Local-time `YYYY-MM-DD` key. */
@@ -12,7 +11,6 @@ export function dateKey(date: Date): string {
   const day = `${date.getDate()}`.padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-
 /** Today's local-time `YYYY-MM-DD` key. */
 export function todayKey(): string {
   return dateKey(new Date())
@@ -122,7 +120,3 @@ export function hostOf(url: string): string {
   }
 }
 
-/** Log prefix shared by every diagnostic line. */
-export function logPrefix(): string {
-  return `[${EXTENSION_NAME}]`
-}

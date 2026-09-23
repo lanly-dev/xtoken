@@ -14,7 +14,6 @@ import {
   createApi,
   createCommandRegistrar,
   refreshUi,
-  registerEventListeners,
   verifyActiveKeyQuietly,
   type Runtime
 } from './commands'
