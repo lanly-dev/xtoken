@@ -5,11 +5,8 @@
  * cancellation support, and classifies every failure into a `xTokenErrorCode`
  * so the UI can react appropriately.
  */
-import type * as vscode from 'vscode'
-
 import { EXTENSION_NAME } from './constants'
-import type { Logger } from './logger'
-import type { ProviderPreset, xTokenErrorCode } from './types'
+import type { ProviderPreset, RawResponse, RequestContext, RequestInitLike, xTokenErrorCode } from './types'
 import { errorMessage, hostOf, truncate } from './utils'
 
 /** Error carrying a machine readable classification of the failure. */
@@ -22,27 +19,6 @@ export class xTokenError extends Error {
     super(message)
     this.name = 'xTokenError'
   }
-}
-
-export interface RequestContext {
-  timeoutMs: number
-  cancellationToken?: vscode.CancellationToken
-  logger?: Logger
-  /** Version string reported in the User-Agent header. */
-  version?: string
-}
-
-interface RawResponse {
-  status: number
-  ok: boolean
-  text: string
-  json: unknown
-}
-
-interface RequestInitLike {
-  method: 'GET' | 'POST'
-  headers?: Record<string, string>
-  body?: string
 }
 
 /**

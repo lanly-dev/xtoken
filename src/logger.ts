@@ -7,7 +7,7 @@ import * as vscode from 'vscode'
 
 import { errorMessage } from './utils'
 import { OUTPUT_CHANNEL_NAME } from './constants'
-import type { LogLevel } from './config'
+import type { LogLevel } from './types'
 
 const LEVEL_WEIGHT: Record<LogLevel, number> = { off: 0, error: 1, warn: 2, info: 3, debug: 4 }
 

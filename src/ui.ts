@@ -7,12 +7,18 @@ import { xTokenError } from './api'
 import { EXTENSION_NAME } from './constants'
 import type { Logger } from './logger'
 import { AVAILABLE_PROVIDERS, getProvider, UPCOMING_PROVIDERS } from './providers'
-import type { ProviderId, ProviderModelInfo, ProviderPreset } from './types'
+import type {
+  ActionItem,
+  ErrorPresentation,
+  ModelPickItem,
+  ModelSelection,
+  ProviderAction,
+  ProviderId,
+  ProviderModelInfo,
+  ProviderPickItem,
+  ProviderPreset
+} from './types'
 import { describeFreeTier, errorMessage, formatCount, hostOf } from './utils'
-
-export interface ProviderPickItem extends vscode.QuickPickItem {
-  presetId?: ProviderId
-}
 
 /** Row describing one provider, shared by the provider picker and usage views. */
 export function providerQuickPickItem(preset: ProviderPreset, activeId?: ProviderId): ProviderPickItem {
@@ -79,17 +85,11 @@ export async function pickProvider(activeId: ProviderId | undefined): Promise<Pr
   }
 }
 
-export type ProviderAction = 'fetch' | 'paste' | 'details' | 'docs'
-
 /** Second step of `xToken.selectProvider`: what should happen with the pick? */
 export async function pickProviderAction(
   preset: ProviderPreset,
   hasStoredKey: boolean
 ): Promise<ProviderAction | undefined> {
-  interface ActionItem extends vscode.QuickPickItem {
-    action: ProviderAction
-  }
-
   const items: ActionItem[] = []
   if (preset.status === 'available') {
     items.push({
@@ -120,17 +120,6 @@ export async function pickProviderAction(
     ignoreFocusOut: true
   })
   return picked?.action
-}
-
-export interface ModelPickItem extends vscode.QuickPickItem {
-  /** Absent or `undefined` clears the stored preference (also used by separators). */
-  model?: ProviderModelInfo
-}
-
-/** What the user chose in {@link pickModel}; `undefined` means "dismissed". */
-export interface ModelSelection {
-  /** The chosen model, or `undefined` when the preference should be cleared. */
-  model: ProviderModelInfo | undefined
 }
 
 /**
@@ -250,15 +239,6 @@ export function providerDetailsLines(preset: ProviderPreset): string[] {
     `Models: ${preset.models.join(', ')}`,
     `Next step: ${preset.setupHint}`
   ]
-}
-
-export interface ErrorPresentation {
-  message: string
-  hint?: string
-  /** True when simply retrying later is a reasonable user action. */
-  retryable: boolean
-  /** True when the failure was a deliberate cancellation and should stay quiet. */
-  quiet: boolean
 }
 
 /** Turn any thrown value into something worth showing in a notification. */

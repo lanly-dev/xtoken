@@ -14,8 +14,7 @@ import {
   createApi,
   createCommandRegistrar,
   refreshUi,
-  verifyActiveKeyQuietly,
-  type Runtime
+  verifyActiveKeyQuietly
 } from './commands'
 
 import { COMMANDS, EXTENSION_NAME } from './constants'
@@ -25,7 +24,7 @@ import { hasInvalidEndpoint, readConfig } from './config'
 import { KeyStore } from './secrets'
 import { Logger } from './logger'
 import { xTokenState } from './state'
-import type { ProviderId, ProviderQuota, xTokenApi } from './types'
+import type { ProviderId, ProviderQuota, Runtime, xTokenApi } from './types'
 
 let runtime: Runtime | undefined
 

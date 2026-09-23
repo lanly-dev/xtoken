@@ -17,36 +17,8 @@ import {
   ALLOWED_PROVIDERS_KEY
 } from './constants'
 import { defaultProviderId, isProviderId, PROVIDERS } from './providers'
-import type { ProviderId } from './types'
+import type { LogLevel, ProviderId, xTokenConfig } from './types'
 import { isHttpUrl } from './utils'
-
-export type LogLevel = 'off' | 'error' | 'warn' | 'info' | 'debug'
-
-export interface xTokenConfig {
-  /** Custom claim endpoint. `undefined` when unset or not a valid http(s) URL. */
-  serverUrl: string | undefined
-  /** Raw value as written by the user, useful for diagnostics. */
-  rawServerUrl: string
-  serverUrlSource: 'xtoken.serverUrl' | 'xToken.serverUrl' | 'unset'
-  defaultProvider: ProviderId
-  requestTimeoutMs: number
-  maxKeysPerProvider: number
-  autoRotateOnFailure: boolean
-  dailyClaimReminder: boolean
-  verifyOnStartup: boolean
-  logLevel: LogLevel
-  /** Ordered list of provider ids xToken should prefer when it serves requests as a
-   * VS Code language model provider. Unknown or unavailable ids are ignored; an empty
-   * list falls back to the catalog order of providers that have at least one stored key. */
-  providerOrder: ProviderId[]
-  /** Provider ids the combined LM provider is allowed to rotate among. When empty every
-   * provider with a stored key is eligible. */
-  allowedProviders: ProviderId[]
-  /** When true the combined xToken provider describes itself with a single stable model
-   * id (`xToken (rotating)`). The harness always sees the same model id; provider and key
-   * rotation happen underneath. */
-  mode: 'combined'
-}
 
 const LOG_LEVELS: readonly LogLevel[] = ['off', 'error', 'warn', 'info', 'debug']
 

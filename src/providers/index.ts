@@ -15,8 +15,7 @@ import { groq } from './groq'
 import { kilo } from './kilo'
 import { mistral } from './mistral'
 import { openrouter } from './openrouter'
-import type { ProviderModule } from './provider-module'
-import type { ProviderId, ProviderPreset } from '../types'
+import type { ProviderId, ProviderModule, ProviderPreset } from '../types'
 
 /**
  * Providers with a working fetch/verify path in this release (1-5), followed by

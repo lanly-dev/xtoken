@@ -9,43 +9,7 @@ import * as vscode from 'vscode'
 import { COMMANDS, EXTENSION_NAME } from './constants'
 import { describeFreeTier, describeQuota, formatCount, maskToken } from './utils'
 import { PROVIDERS } from './providers'
-import type { KeyStore } from './secrets'
-import type { Logger } from './logger'
-import type { ProviderId, ProviderModelInfo, ProviderPreset, ProviderQuota } from './types'
-import type { xTokenState } from './state'
-
-/** Collaborators the dashboard needs to render itself. */
-export interface DashboardDeps {
-  state: xTokenState
-  keys: KeyStore
-  logger: Logger
-  /** Cached live quota counters keyed by provider id (owned by extension.ts). */
-  quotaCache: Map<ProviderId, ProviderQuota>
-}
-
-export type DashboardNode =
-  | { kind: 'summary', label: string, detail: string }
-  | { kind: 'providers' }
-  | {
-    kind: 'provider'
-    preset: ProviderPreset
-    active: boolean
-    keyCount: number
-    requests: number
-    tokens: number
-    quota: ProviderQuota | undefined
-    /** Model preferred via `xToken.selectModel`, when one is set. */
-    model: ProviderModelInfo | undefined
-  }
-  | {
-    kind: 'key'
-    providerId: ProviderId
-    masked: string
-    active: boolean
-    /** Preferred model for this provider, if one was picked via `xToken.selectModel`. */
-    model?: ProviderModelInfo
-    providerName: string
-  }
+import type { DashboardDeps, DashboardNode } from './types'
 
 export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
   private readonly emitter = new vscode.EventEmitter<DashboardNode | undefined>()

@@ -5,7 +5,7 @@
  * rather than transport, so they now sit next to the provider modules that
  * consume them. Each module binds them to its own preset, which keeps the HTTP
  * plumbing shared while every provider exposes the identical method set from
- * `./provider-module`.
+ * `ProviderModule` (see `../types`).
  */
 import {
   buildHeaders,
@@ -13,8 +13,7 @@ import {
   describePayload,
   failureToError,
   request,
-  xTokenError,
-  type RequestContext
+  xTokenError
 } from '../api'
 import { EXTENSION_NAME } from '../constants'
 import type {
@@ -23,6 +22,7 @@ import type {
   ProviderModelInfo,
   ProviderPreset,
   ProviderQuota,
+  RequestContext,
   RotationEvent,
   RotationOutcome,
   VerificationResult

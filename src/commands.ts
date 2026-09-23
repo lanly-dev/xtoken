@@ -8,47 +8,31 @@
  */
 import * as vscode from 'vscode'
 
-import { xTokenError, type RequestContext } from './api'
+import { xTokenError } from './api'
 import {
   CONTEXT_ACTIVE_PROVIDER,
   CONTEXT_HAS_KEY,
   EXTENSION_NAME
 } from './constants'
-import { readConfig, type xTokenConfig } from './config'
-import type { DashboardNode, DashboardTree } from './treeview'
-import type { Logger } from './logger'
+import { readConfig } from './config'
 import { AVAILABLE_PROVIDERS, getProvider, isProviderId, PROVIDERS, requireModule, requireProvider } from './providers'
-import type { KeyStore } from './secrets'
-import type { xTokenState } from './state'
 import type {
+  AcquisitionSource,
   ClaimRequestPayload,
+  DashboardNode,
   ProviderId,
   ProviderModelInfo,
   ProviderPreset,
-  ProviderQuota,
+  RequestContext,
+  Runtime,
+  ScopeItem,
+  UsageItem,
+  VerificationResult,
   xTokenApi,
-  VerificationResult
+  xTokenConfig
 } from './types'
 import * as ui from './ui'
 import { describeFreeTier, describeQuota, formatCount, hostOf, maskToken, todayKey } from './utils'
-
-export interface Runtime {
-  context: vscode.ExtensionContext
-  logger: Logger
-  state: xTokenState
-  keys: KeyStore
-  /** Activity-bar dashboard tree (mirrors state; refreshed on every repaint). */
-  dashboard: DashboardTree
-  version: string
-  machineId: string
-  sessionId: string
-  /** Last provider reported quota counters, keyed by provider id. */
-  quotaCache: Map<ProviderId, ProviderQuota>
-}
-
-type AcquisitionSource =
-  | { kind: 'claim-endpoint', host: string, expiresAt?: string, dailyLimit?: number }
-  | { kind: 'provider-key', detail: string }
 
 /** Wrap a command so any unhandled rejection still reaches the user. */
 export function createCommandRegistrar(rt: Runtime) {
@@ -668,10 +652,6 @@ export async function commandClearToken(rt: Runtime): Promise<void> {
     return
   }
 
-  interface ScopeItem extends vscode.QuickPickItem {
-    scope: 'all' | 'active' | 'cancel'
-  }
-
   const activeCount = activeId ? ring[activeId]?.length ?? 0 : 0
   const items: ScopeItem[] = [
     {
@@ -732,11 +712,6 @@ async function clearWorkspaceState(context: vscode.ExtensionContext): Promise<vo
 /** `xToken.showUsage`: today's ledger plus live provider quota counters. */
 export async function commandShowUsage(rt: Runtime): Promise<void> {
   const config = readConfig()
-
-  interface UsageItem extends vscode.QuickPickItem {
-    action?: 'refresh' | 'reset' | 'copy' | 'log'
-    providerId?: ProviderId
-  }
 
   for (;;) {
     const snapshot = rt.state.snapshot()

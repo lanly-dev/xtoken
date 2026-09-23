@@ -20,11 +20,11 @@ Goal:
 
 Current state bucketed:
 - Already in place:
-  - `RotationModelStore` + `RotationModel` in `src/constants.ts`
+  - `RotationModel` in `src/constants.ts`, `RotationModelStore` in `src/types.ts`
   - `STATE_ROTATION_MODEL` global-state key
   - `xTokenState.getRotationModel()` / `writeRotationModel()`
   - Config fields `providerOrder`, `allowedProviders`, `mode: 'combined'` in `src/config.ts`
-  - `ProviderModule.chat?(...)` and `modelIdForCombinedMode?()` in `src/providers/provider-module.ts`
+  - `ProviderModule.chat?(...)` and `modelIdForCombinedMode?()` in `src/types.ts`
   - `src/lm-chat.ts` exists with `translateChatRequest(...)` helpers only
 - Not yet implemented:
   - No `ChatProvider` class implementing `LanguageModelChatProvider`

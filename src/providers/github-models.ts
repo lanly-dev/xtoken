@@ -3,8 +3,7 @@
  * uniform provider method set ({@link ProviderModule}) bound to the engine.
  */
 import { claimFromServer, fetchProviderQuota, listProviderModels, verifyProviderKey } from './engine'
-import type { ProviderModule } from './provider-module'
-import type { ProviderPreset } from '../types'
+import type { ProviderModule, ProviderPreset } from '../types'
 
 const preset: ProviderPreset = {
   id: 'github-models',

@@ -5,7 +5,7 @@
  * lives here so that a rename in one place cannot silently orphan user data.
  */
 
-import type { ProviderId } from './types'
+import type { ProviderId, RotationModelStore } from './types'
 
 export const EXTENSION_NAME = 'xToken'
 export const OUTPUT_CHANNEL_NAME = 'xToken'
@@ -29,23 +29,6 @@ export const STATE_PREFERRED_MODELS = 'preferredModels'
 export const STATE_ROTATION_INDEX = 'keyRotationIndex'
 /** globalState key for the combined language model provider's rotation cursor. */
 export const STATE_ROTATION_MODEL = 'rotationModel'
-/** Shared rotation state for the combined xToken language model provider.
-
- * Persisted in `globalState` under `rotationModel` so a restart does not reset
- * which key/provider was last used for the combined model. The rotation model
- * owns the cursor for every provider that participates in combined mode: when a
- * request fails with a credential/rate-limit error the cursor advances to the
- * next stored key for that provider, and when the provider's ring is exhausted
- * the combined model falls back to the next provider in the configured order.
- * Rotations are intentionally per-session; the harness owns session lifecycle
- * and xToken simply keeps a best-effort cursor across messages.
- */
-export interface RotationModelStore {
-  /** Provider id that was used for the most recent successful request. */
-  lastProviderId: ProviderId | undefined
-  /** Per-provider cursor: index into that provider's stored key ring. */
-  cursors: Record<string, number>
-}
 
 export class RotationModel {
   constructor(
