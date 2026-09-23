@@ -19,8 +19,10 @@ import {
   USAGE_HISTORY_DAYS
 } from './constants'
 import type { Logger } from './logger'
-import { isProviderId } from './providers'
-import type { ProviderId, ProviderModelInfo, ProviderUsage, UsageHistory, UsageSnapshot } from './types'
+import { isProviderId, PROVIDERS } from './providers'
+import type { ProviderId, ProviderModelInfo } from './types'
+import type { ProviderUsage, DayUsage, UsageHistory, UsageSnapshot } from './types-usage'
+import type { RotationModelStore } from './constants'
 import { daysBetween, todayKey } from './utils'
 
 const EMPTY_USAGE: ProviderUsage = { requests: 0, tokens: 0 }
@@ -102,7 +104,7 @@ export class xTokenState {
   /**
    * Usage recorded for a single day.
    */
-  getUsage(date: string = todayKey()): Record<ProviderId, ProviderUsage> {
+  getUsage(date: string = todayKey()): DayUsage {
     return this.usageHistory()[date] ?? {}
   }
 

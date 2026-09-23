@@ -5,6 +5,8 @@
  * lives here so that a rename in one place cannot silently orphan user data.
  */
 
+import type { ProviderId } from './types'
+
 export const EXTENSION_NAME = 'xToken'
 export const EXTENSION_ID = 'xToken'
 export const PUBLISHER_ID = 'xToken-dev'
@@ -112,9 +114,9 @@ export class RotationModel {
 
   private async readStore(): Promise<RotationModelStore> {
     const raw = await this.state.getRotationModel()
-    if (!raw) {
+    if (!raw)
       return { lastProviderId: undefined, cursors: {} }
-    }
+
     if (typeof raw.lastProviderId === 'string' && ALL_IDS.includes(raw.lastProviderId)) {
       // Safety: only keep known ids.
       const known = ALL_IDS.includes(raw.lastProviderId) ? raw.lastProviderId : undefined

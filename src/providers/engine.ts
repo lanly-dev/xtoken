@@ -232,9 +232,10 @@ export async function rotateProviderKey(
  * Minimal logger used by the engine when a full `Logger` instance is not available.
  * The command layer supplies `rt.logger`; standalone engine calls fall back to this.
  */
-function rtLogger(
-  context: RequestContext
-): { debug?: (msg: string, ...args: unknown[]) => void; warn: (msg: string, ...args: unknown[]) => void } {
+function rtLogger(context: RequestContext): {
+  debug?: (msg: string, ...args: unknown[]) => void
+  warn: (msg: string, ...args: unknown[]) => void
+} {
   const logger = context.logger
   if (logger) {
     return {

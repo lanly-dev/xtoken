@@ -1,5 +1,5 @@
 
-import { env, ExtensionContext, version, window, lm } from 'vscode'
+import { env, ExtensionContext, version, window, lm, workspace } from 'vscode'
 
 import {
   commandClearToken,
@@ -62,13 +62,24 @@ export async function activate(context: ExtensionContext): Promise<xTokenApi> {
   const d8 = rc(COMMANDS.openSiteUrl, node => commandOpenKeyUrl(rt, node))
   const d9 = rc(COMMANDS.selectModel, arg => commandSelectModel(rt, arg))
 
-  const chat = new ChatProvider(rt, logger)
-  const ch = lm.registerLanguageModelProvider(chat, { viewlet: true })
+  // Register the dashboard tree view in the activity bar
+  const dashboardView = window.createTreeView('xToken.dashboard', {
+    treeDataProvider: dashboard
+  })
+
+  // Listen for configuration changes and refresh the UI
+  const onConfigChange = workspace.onDidChangeConfiguration(() => {
+    void refreshUi(rt)
+  })
+
+  // Register the language model chat provider (combined/rotating mode)
+  const chat = new ChatProvider()
+  const ch = lm.registerLanguageModelChatProvider('xToken', chat)
 
   context.subscriptions.push(
     logger,
     d1, d2, d3, d4, d5, d6, d7, d8, d9,
-    onConfigChange, onSecretsChange,
+    onConfigChange,
     dashboardView,
     ch
   )

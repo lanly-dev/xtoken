@@ -7,17 +7,29 @@
  * `./index.ts` and can then rely on this identical method set everywhere.
  */
 import type { RequestContext } from '../api'
+import type * as vscode from 'vscode'
 import type {
   ClaimRequestPayload,
   ClaimResponse,
-  LanguageModelChatRequest,
-  LanguageModelChatResponsePart,
+  ProviderId,
   ProviderModelInfo,
   ProviderPreset,
   ProviderQuota,
   ProviderStatus,
   VerificationResult
 } from '../types'
+
+export interface ChatRequest {
+  providerId: ProviderId
+  modelId: string
+  system: string[]
+  user: Array<{ role: 'user', content: string }>
+  temperature?: number
+  maxTokens?: number
+  stop?: string[] | undefined
+  stream: boolean
+  tools?: unknown[] | undefined
+}
 
 export interface ProviderModule {
   /** Full catalog entry: URLs, auth shape, published limits and caveats. */
@@ -46,5 +58,9 @@ export interface ProviderModule {
    * handle the turn (no stored key, or the backend is not chat-capable yet);
    * the combined LM provider falls back to the next eligible provider.
    */
-  chat?(apiKey: string, request: LanguageModelChatRequest, context: RequestContext, onPart: (part: Readonly<LanguageModelChatResponsePart>) => void, onError: (error: unknown) => void, abort: () => boolean): Promise<void>
+  chat?(
+    request: ChatRequest,
+    onPart: (part: vscode.LanguageModelResponsePart) => void,
+    token: vscode.CancellationToken
+  ): Promise<void>
 }

@@ -3,7 +3,8 @@
  */
 import type { ProviderUsage } from './types-usage'
 
-export type { ProviderUsage, DayUsage, UsageHistory, UsageSnapshot } from './types-usage'
+
+export type { ProviderUsage, UsageHistory, UsageSnapshot } from './types-usage'
 
 /** Every provider xToken knows about. */
 export type ProviderId =

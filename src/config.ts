@@ -16,7 +16,7 @@ import {
   PROVIDER_ORDER_KEY,
   ALLOWED_PROVIDERS_KEY
 } from './constants'
-import { defaultProviderId, isProviderId } from './providers'
+import { defaultProviderId, isProviderId, PROVIDERS } from './providers'
 import type { ProviderId } from './types'
 import { isHttpUrl } from './utils'
 
@@ -49,9 +49,6 @@ export interface xTokenConfig {
 }
 
 const LOG_LEVELS: readonly LogLevel[] = ['off', 'error', 'warn', 'info', 'debug']
-
-import type { ProviderId, ProviderModelInfo } from './types'
-import { PROVIDERS, isProviderId } from './providers'
 
 function readList(raw: unknown): ProviderId[] {
   if (!Array.isArray(raw))
