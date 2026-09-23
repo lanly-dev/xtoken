@@ -23,9 +23,11 @@ import type {
   ProviderModelInfo,
   ProviderPreset,
   ProviderQuota,
+  RotationEvent,
+  RotationOutcome,
   VerificationResult
 } from '../types'
-import { hostOf, readPath, toNumber } from '../utils'
+import { hostOf, maskToken, readPath, toNumber } from '../utils'
 
 /**
  * Prove that a key works by calling the provider's model listing (or key info)
@@ -171,6 +173,78 @@ export async function claimFromServer(
     expiresAt: pickString(response.json, ['expiresAt', 'expires_at', 'expiry']),
     dailyLimit: toNumber(readPath(response.json, 'dailyLimit')) ?? toNumber(readPath(response.json, 'daily_limit')),
     message: pickString(response.json, ['message', 'detail'])
+  }
+}
+
+/**
+ * Rotate the active key for a provider to the next entry in its ring (round-robin).
+ *
+ * The caller passes the stored ring (from `KeyStore.getKeyRing()`) and the current
+ * active key; this function finds the next key, sets it active via the `setActive`
+ * callback, and records the rotation event through the `record` callback. Both
+ * callbacks are supplied by the command layer so the engine stays agnostic of
+ * Secret Storage and globalState.
+ */
+export async function rotateProviderKey(
+  preset: ProviderPreset,
+  ring: string[],
+  activeKey: string | undefined,
+  setActive: (nextKey: string) => Promise<number>,
+  record: (event: RotationEvent) => Promise<void>,
+  context: RequestContext
+): Promise<RotationOutcome> {
+  if (ring.length === 0)
+    throw new Error(`No keys stored for ${preset.name}.`)
+
+  const currentIndex = activeKey ? ring.indexOf(activeKey) : -1
+  const nextIndex = currentIndex >= 0
+    ? (currentIndex + 1) % ring.length
+    : 0
+  const previousKey = activeKey
+  const nextKey = ring[nextIndex]
+
+  const setIndex = await setActive(nextKey)
+  if (setIndex !== nextIndex) {
+    rtLogger(context).warn(
+      `${preset.name}: ring index drift — expected ${nextIndex}, setActive returned ${setIndex}`
+    )
+  }
+
+  const event: RotationEvent = {
+    providerId: preset.id,
+    from: previousKey ?? '',
+    to: nextKey,
+    reason: previousKey ? 'manual' : 'initial',
+    timestamp: Date.now()
+  }
+  await record(event)
+
+  return {
+    activeKey: nextKey,
+    previousKey,
+    note: previousKey
+      ? `${preset.name} rotated from ${maskToken(previousKey)} to ${maskToken(nextKey)}.`
+      : `${preset.name} has one key (${maskToken(nextKey)}); no rotation needed.`
+  }
+}
+
+/**
+ * Minimal logger used by the engine when a full `Logger` instance is not available.
+ * The command layer supplies `rt.logger`; standalone engine calls fall back to this.
+ */
+function rtLogger(
+  context: RequestContext
+): { debug?: (msg: string, ...args: unknown[]) => void; warn: (msg: string, ...args: unknown[]) => void } {
+  const logger = context.logger
+  if (logger) {
+    return {
+      debug: logger.debug.bind(logger),
+      warn: logger.warn.bind(logger)
+    }
+  }
+  return {
+    debug: undefined,
+    warn: (msg: string) => console.warn(`[xToken] ${msg}`)
   }
 }
 

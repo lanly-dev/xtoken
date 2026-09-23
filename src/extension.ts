@@ -1,5 +1,5 @@
 
-import { env, ExtensionContext, version, window } from 'vscode'
+import { env, ExtensionContext, version, window, lm } from 'vscode'
 
 import {
   commandClearToken,
@@ -20,6 +20,7 @@ import {
 } from './commands'
 
 import { COMMANDS, EXTENSION_NAME } from './constants'
+import { ChatProvider } from './lm-chat'
 import { DashboardTree } from './treeview'
 import { hasInvalidEndpoint, readConfig } from './config'
 import { KeyStore } from './secrets'
@@ -61,14 +62,15 @@ export async function activate(context: ExtensionContext): Promise<xTokenApi> {
   const d8 = rc(COMMANDS.openSiteUrl, node => commandOpenKeyUrl(rt, node))
   const d9 = rc(COMMANDS.selectModel, arg => commandSelectModel(rt, arg))
 
-  const [onConfigChange, onSecretsChange] = registerEventListeners(rt)
-  const dashboardView = window.createTreeView('xToken.dashboard', { treeDataProvider: dashboard })
+  const chat = new ChatProvider(rt, logger)
+  const ch = lm.registerLanguageModelProvider(chat, { viewlet: true })
 
   context.subscriptions.push(
     logger,
     d1, d2, d3, d4, d5, d6, d7, d8, d9,
     onConfigChange, onSecretsChange,
-    dashboardView
+    dashboardView,
+    ch
   )
 
   logger.info(`${EXTENSION_NAME} v${rt.version} activated (extension host ${version})`)

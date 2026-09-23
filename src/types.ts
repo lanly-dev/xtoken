@@ -92,6 +92,22 @@ export interface ProviderQuota {
   checkedAt: number
 }
 
+/** Result of rotating the active key for a provider. */
+export interface RotationOutcome {
+  activeKey: string
+  previousKey?: string
+  note: string
+}
+
+/** A single key-rotation event recorded for diagnostics. */
+export interface RotationEvent {
+  providerId: ProviderId
+  from: string
+  to: string
+  reason: 'manual' | 'initial' | 'auto'
+  timestamp: number
+}
+
 /** One entry from a provider's `GET /models` catalog. */
 export interface ProviderModelInfo {
   /** Stable model id persisted and sent to claim endpoints, e.g. `deepseek/deepseek-r1:free`. */
@@ -110,6 +126,15 @@ export interface VerificationResult {
   detail: string
   models?: string[]
   quota?: ProviderQuota
+}
+
+export interface RotationOutcome {
+  /** The key that is active after rotation. */
+  activeKey: string
+  /** Previous active key, or `undefined` when there was no prior key. */
+  previousKey?: string
+  /** Human-readable note describing the rotation. */
+  note: string
 }
 
 export interface ClaimResponse {

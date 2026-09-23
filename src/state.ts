@@ -14,6 +14,7 @@ import {
   STATE_LAST_CLAIM_DATE,
   STATE_PREFERRED_MODELS,
   STATE_ROTATION_INDEX,
+  STATE_ROTATION_MODEL,
   STATE_USAGE,
   USAGE_HISTORY_DAYS
 } from './constants'
@@ -87,8 +88,21 @@ export class xTokenState {
     )
   }
 
-  /** Usage recorded for a single day. */
-  getUsage(date: string = todayKey()): Record<string, ProviderUsage> {
+  /**
+   * Combined LM provider rotation cursor persisted under {@link STATE_ROTATION_MODEL}.
+   */
+  getRotationModel(): Promise<RotationModelStore | undefined> {
+    return Promise.resolve(this.memento.get<RotationModelStore | undefined>(STATE_ROTATION_MODEL))
+  }
+
+  async writeRotationModel(store: RotationModelStore): Promise<void> {
+    await this.memento.update(STATE_ROTATION_MODEL, store)
+  }
+
+  /**
+   * Usage recorded for a single day.
+   */
+  getUsage(date: string = todayKey()): Record<ProviderId, ProviderUsage> {
     return this.usageHistory()[date] ?? {}
   }
 
@@ -144,6 +158,7 @@ export class xTokenState {
     await this.memento.update(STATE_LAST_CLAIM_DATE, undefined)
     await this.memento.update(STATE_ACTIVE_PROVIDER, undefined)
     await this.memento.update(STATE_ROTATION_INDEX, undefined)
+    await this.memento.update(STATE_ROTATION_MODEL, undefined)
     this.logger.info('Claim guard, active provider and legacy rotation cursor cleared')
   }
 }

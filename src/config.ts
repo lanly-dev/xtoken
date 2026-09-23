@@ -9,9 +9,12 @@ import {
   DEFAULT_KEYS_PER_PROVIDER,
   DEFAULT_REQUEST_TIMEOUT_SECONDS,
   LEGACY_SERVER_URL_SETTING,
+  LM_CONFIG_SECTION,
   MAX_KEYS_PER_PROVIDER,
   MAX_REQUEST_TIMEOUT_SECONDS,
-  MIN_REQUEST_TIMEOUT_SECONDS
+  MIN_REQUEST_TIMEOUT_SECONDS,
+  PROVIDER_ORDER_KEY,
+  ALLOWED_PROVIDERS_KEY
 } from './constants'
 import { defaultProviderId, isProviderId } from './providers'
 import type { ProviderId } from './types'
@@ -32,9 +35,49 @@ export interface xTokenConfig {
   dailyClaimReminder: boolean
   verifyOnStartup: boolean
   logLevel: LogLevel
+  /** Ordered list of provider ids xToken should prefer when it serves requests as a
+   * VS Code language model provider. Unknown or unavailable ids are ignored; an empty
+   * list falls back to the catalog order of providers that have at least one stored key. */
+  providerOrder: ProviderId[]
+  /** Provider ids the combined LM provider is allowed to rotate among. When empty every
+   * provider with a stored key is eligible. */
+  allowedProviders: ProviderId[]
+  /** When true the combined xToken provider describes itself with a single stable model
+   * id (`xToken (rotating)`). The harness always sees the same model id; provider and key
+   * rotation happen underneath. */
+  mode: 'combined'
 }
 
 const LOG_LEVELS: readonly LogLevel[] = ['off', 'error', 'warn', 'info', 'debug']
+
+import type { ProviderId, ProviderModelInfo } from './types'
+import { PROVIDERS, isProviderId } from './providers'
+
+function readList(raw: unknown): ProviderId[] {
+  if (!Array.isArray(raw))
+    return []
+  const ids: ProviderId[] = []
+  for (const entry of raw as unknown[]) {
+    if (isProviderId(entry) && !ids.includes(entry))
+      ids.push(entry)
+  }
+  return ids
+}
+
+/** Ordered list of provider ids to prefer for LM requests; empty falls back to every
+ * provider that has at least one stored key, in catalog order. */
+function readProviderOrder(): ProviderId[] {
+  return readList(vscode.workspace.getConfiguration(LM_CONFIG_SECTION).get<unknown[]>(PROVIDER_ORDER_KEY))
+}
+
+function readAllowedProviders(): ProviderId[] {
+  return readList(vscode.workspace.getConfiguration(LM_CONFIG_SECTION).get<unknown[]>(ALLOWED_PROVIDERS_KEY))
+}
+
+function readMode(): xTokenConfig['mode'] {
+  const raw = vscode.workspace.getConfiguration(LM_CONFIG_SECTION).get<string>('mode')
+  return raw === 'combined' ? 'combined' : 'combined'
+}
 
 /** Read the whole `xtoken.*` surface in one pass. */
 export function readConfig(): xTokenConfig {
@@ -58,7 +101,10 @@ export function readConfig(): xTokenConfig {
     autoRotateOnFailure: section.get<boolean>('autoRotateOnFailure') ?? true,
     dailyClaimReminder: section.get<boolean>('dailyClaimReminder') ?? true,
     verifyOnStartup: section.get<boolean>('verifyOnStartup') ?? false,
-    logLevel: LOG_LEVELS.includes(rawLogLevel as LogLevel) ? (rawLogLevel as LogLevel) : 'info'
+    logLevel: LOG_LEVELS.includes(rawLogLevel as LogLevel) ? (rawLogLevel as LogLevel) : 'info',
+    providerOrder: readProviderOrder(),
+    allowedProviders: readAllowedProviders(),
+    mode: readMode()
   }
 }
 

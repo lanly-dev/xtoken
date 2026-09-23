@@ -10,6 +10,8 @@ import type { RequestContext } from '../api'
 import type {
   ClaimRequestPayload,
   ClaimResponse,
+  LanguageModelChatRequest,
+  LanguageModelChatResponsePart,
   ProviderModelInfo,
   ProviderPreset,
   ProviderQuota,
@@ -34,4 +36,15 @@ export interface ProviderModule {
   listModels(apiKey: string | undefined, context: RequestContext): Promise<ProviderModelInfo[]>
   /** Claim a fresh token for this provider from the configured xToken server. */
   claim(serverUrl: string, payload: ClaimRequestPayload, context: RequestContext): Promise<ClaimResponse>
+  /** Combined model id this provider contributes when the xToken LM provider is in
+   * combined mode, e.g. `"xToken (Gemini)"` or `"xToken (OpenRouter)"`. Return `undefined`
+   * when the provider should not be surfaced as a distinct identity. */
+  modelIdForCombinedMode?(): string
+  /**
+   * Send an outbound chat turn through this provider with a specific key.
+   * Returning without resolving signals that the provider cannot or should not
+   * handle the turn (no stored key, or the backend is not chat-capable yet);
+   * the combined LM provider falls back to the next eligible provider.
+   */
+  chat?(apiKey: string, request: LanguageModelChatRequest, context: RequestContext, onPart: (part: Readonly<LanguageModelChatResponsePart>) => void, onError: (error: unknown) => void, abort: () => boolean): Promise<void>
 }

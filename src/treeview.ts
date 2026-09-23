@@ -87,8 +87,9 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
         item.description = [
           node.active
             ? `active \u2022 ${node.keyCount} 🔑`
-            : `${node.keyCount} \u2022 key(s)`
-        ].join(' ')
+            : `${node.keyCount} \u2022 key(s)`,
+          node.model ? `\u2022 ${node.model.id}` : undefined
+        ].filter(part => part !== undefined).join(' ')
         item.tooltip = new vscode.MarkdownString(
           [
             `**${preset.name}**${node.active ? ' \u00b7 active provider' : ''}`,
