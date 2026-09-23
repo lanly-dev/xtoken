@@ -37,7 +37,15 @@ export type DashboardNode =
     /** Model preferred via `xToken.selectModel`, when one is set. */
     model: ProviderModelInfo | undefined
   }
-  | { kind: 'key', providerId: ProviderId, masked: string, active: boolean }
+  | {
+    kind: 'key'
+    providerId: ProviderId
+    masked: string
+    active: boolean
+    /** Preferred model for this provider, if one was picked via `xToken.selectModel`. */
+    model?: ProviderModelInfo
+    providerName: string
+  }
 
 export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
   private readonly emitter = new vscode.EventEmitter<DashboardNode | undefined>()
@@ -79,9 +87,8 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
         item.description = [
           node.active
             ? `active \u2022 ${node.keyCount} 🔑`
-            : `${node.keyCount} \u2022 key(s)`,
-          node.model ? `\u2022 ${node.model.id}` : undefined
-        ].filter(part => part !== undefined).join(' ')
+            : `${node.keyCount} \u2022 key(s)`
+        ].join(' ')
         item.tooltip = new vscode.MarkdownString(
           [
             `**${preset.name}**${node.active ? ' \u00b7 active provider' : ''}`,
@@ -101,9 +108,22 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
       case 'key': {
         const item = new vscode.TreeItem(node.masked, vscode.TreeItemCollapsibleState.None)
         item.iconPath = new vscode.ThemeIcon(node.active ? 'key' : 'circle-outline')
-        item.description = node.active ? 'active key' : undefined
+        const descParts: string[] = []
+        if (node.active)
+          descParts.push('active key')
+        if (node.model)
+          descParts.push(`\u2022 ${node.model.id}`)
+        item.description = descParts.length ? descParts.join(' ') : undefined
         item.contextValue = node.active ? 'xToken.keyActive' : 'xToken.key'
         item.command = { command: COMMANDS.showToken, title: 'Show Active Token' }
+        if (node.model) {
+          item.tooltip = new vscode.MarkdownString(
+            [
+              `Active key for **${node.providerName}**`,
+              `Using model: \`${node.model.id}\``,
+              node.active ? 'This is the active credential for this provider.' : ''
+            ].filter(Boolean).join('\n\n'))
+        }
         return item
       }
     }
@@ -118,11 +138,14 @@ export class DashboardTree implements vscode.TreeDataProvider<DashboardNode> {
       return []
     const keys = await this.deps.keys.listKeys(element.preset.id)
     const activeToken = element.active ? await this.deps.keys.getActiveToken() : undefined
+    const model = this.deps.state.preferredModel(element.preset.id)
     return keys.map(key => ({
       kind: 'key' as const,
       providerId: element.preset.id,
       masked: maskToken(key),
-      active: key === activeToken
+      active: key === activeToken,
+      model,
+      providerName: element.preset.name
     }))
   }
 
