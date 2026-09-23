@@ -20,8 +20,7 @@ import {
 } from './constants'
 import type { Logger } from './logger'
 import { isProviderId, PROVIDERS } from './providers'
-import type { ProviderId, ProviderModelInfo } from './types'
-import type { ProviderUsage, DayUsage, UsageHistory, UsageSnapshot } from './types-usage'
+import type { ProviderId, ProviderModelInfo, ProviderUsage, DayUsage, UsageHistory, UsageSnapshot } from './types'
 import type { RotationModelStore } from './constants'
 import { daysBetween, todayKey } from './utils'
 
